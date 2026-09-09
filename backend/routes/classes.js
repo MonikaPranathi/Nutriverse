@@ -7,6 +7,7 @@
  *   POST /api/match-ingredients - classes ranked by ingredient match (Checkpoint 2)
  *   POST /api/add-ingredient    - insert a new ingredient if missing (Checkpoint 2)
  *   POST /api/upload-class      - Contributor class submission  (Checkpoint 3)
+ *   POST /api/like-class        - record a like + notify uploader (Checkpoint 3)
  *
  * Matches Pranathi's actual schema:
  *   classes(id, title, category, budget, time_needed, taste,
@@ -14,6 +15,8 @@
  *           uploader_id, status, created_at)
  *   ingredients(id, name, is_user_submitted)
  *   class_ingredients(class_id, ingredient_id)
+ *   user_likes(user_id, class_id, liked_at)
+ *   notifications(id, user_id, message, related_class_id, is_read, created_at)
  *
  * Assumes db.js exports a mysql2/promise pool as `pool`.
  */
@@ -31,7 +34,6 @@ function respond(res, success, message, data = null, httpCode = 200) {
     return res.status(httpCode).json({ success, message, data });
 }
 
-// Whitelist of filterable columns -> avoids building SQL from arbitrary keys
 const FILTERABLE_FIELDS = [
     'category',
     'budget',
@@ -41,7 +43,6 @@ const FILTERABLE_FIELDS = [
     'meal_time',
 ];
 
-// Values must match the schema's ENUM definitions exactly
 const VALID_CATEGORIES = ['gut_health', 'family', 'quick_no_stove', 'veg', 'nonveg_egg', 'seafood'];
 const VALID_BUDGETS = ['low', 'medium', 'high'];
 const VALID_TIME_NEEDED = ['quick', 'medium', 'long'];
@@ -51,7 +52,7 @@ const VALID_MEAL_TIMES = ['morning', 'afternoon', 'evening', 'night'];
 const VALID_SOURCE_TYPES = ['native', 'youtube', 'external'];
 
 // ---------------------------------------------------------------------
-// GET /api/classes - filtered class list
+// GET /api/classes
 // ---------------------------------------------------------------------
 router.get('/classes', async (req, res) => {
     try {
@@ -226,20 +227,8 @@ const upload = multer({
 
 // ---------------------------------------------------------------------
 // POST /api/upload-class
-//
-// If source_type = 'native': multipart/form-data with a `video` file field.
-// If source_type = 'youtube' | 'external': JSON or form body with a
-//   `video_url` string field, no file needed.
-//
-// Common fields (form or JSON):
-//   title, category, budget, time_needed, taste, skill_level,
-//   meal_time, uploader_id, source_type, ingredients (comma-separated
-//   names, optional)
 // ---------------------------------------------------------------------
 router.post('/upload-class', (req, res, next) => {
-    // Multer only actually needs to run for native (file) uploads, but it's
-    // harmless to run for all multipart requests — it just won't find a file
-    // for youtube/external submissions sent as multipart too.
     upload.single('video')(req, res, (err) => {
         if (err) {
             return respond(res, false, err.message, null, 400);
@@ -262,7 +251,6 @@ router.post('/upload-class', (req, res, next) => {
     const uploaderId = parseInt(req.body.uploader_id, 10);
     const cleanTitle = (title || '').trim();
 
-    // --- Validation -----------------------------------------------------
     if (!uploaderId || !cleanTitle) {
         if (req.file) fs.unlink(req.file.path, () => {});
         return respond(res, false, 'uploader_id and title are required.', null, 400);
@@ -291,7 +279,6 @@ router.post('/upload-class', (req, res, next) => {
         return respond(res, false, `meal_time must be one of: ${VALID_MEAL_TIMES.join(', ')}`, null, 400);
     }
 
-    // --- Resolve the video URL -------------------------------------------
     let videoUrl;
     if (sourceType === 'native') {
         if (!req.file) {
@@ -357,6 +344,69 @@ router.post('/upload-class', (req, res, next) => {
         if (req.file) fs.unlink(req.file.path, () => {});
         console.error(err);
         return respond(res, false, 'Upload failed while saving to the database.', null, 500);
+    } finally {
+        conn.release();
+    }
+});
+
+// ---------------------------------------------------------------------
+// POST /api/like-class
+// Body: { user_id: number, class_id: number }
+// Records a like and drops a notification for the class's uploader.
+// ---------------------------------------------------------------------
+router.post('/like-class', async (req, res) => {
+    const userId = parseInt(req.body.user_id, 10);
+    const classId = parseInt(req.body.class_id, 10);
+
+    if (!userId || !classId) {
+        return respond(res, false, 'user_id and class_id are required.', null, 400);
+    }
+
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [existing] = await conn.query(
+            'SELECT user_id FROM user_likes WHERE user_id = ? AND class_id = ?',
+            [userId, classId]
+        );
+
+        if (existing.length > 0) {
+            await conn.rollback();
+            return respond(res, false, 'You already liked this class.', null, 409);
+        }
+
+        const [classRows] = await conn.query(
+            'SELECT uploader_id, title FROM classes WHERE id = ?',
+            [classId]
+        );
+
+        if (classRows.length === 0) {
+            await conn.rollback();
+            return respond(res, false, 'Class not found.', null, 404);
+        }
+
+        await conn.query(
+            'INSERT INTO user_likes (user_id, class_id) VALUES (?, ?)',
+            [userId, classId]
+        );
+
+        const { uploader_id: uploaderId, title } = classRows[0];
+
+        // Don't notify someone liking their own class
+        if (uploaderId && uploaderId !== userId) {
+            await conn.query(
+                'INSERT INTO notifications (user_id, message, related_class_id) VALUES (?, ?, ?)',
+                [uploaderId, `Someone liked your class "${title}".`, classId]
+            );
+        }
+
+        await conn.commit();
+        return respond(res, true, 'Like recorded.', null, 201);
+    } catch (err) {
+        await conn.rollback();
+        console.error(err);
+        return respond(res, false, 'Failed to record like.', null, 500);
     } finally {
         conn.release();
     }
