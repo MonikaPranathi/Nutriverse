@@ -14,6 +14,7 @@ router.post('/signup', async (req, res) => {
     await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [name, email, hashed]);
     res.json({ success: true, message: 'Account created' });
   } catch (err) {
+    console.log(err);
     res.json({ success: false, message: 'Email already exists' });
   }
 });
