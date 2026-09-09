@@ -3,19 +3,36 @@ const bcrypt = require('bcrypt');
 const router = express.Router();
 const db = require('../db');
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 6;
+
 // POST /api/signup
 router.post('/signup', async (req, res) => {
   const { name, email, password } = req.body;
+
   if (!name || !email || !password) {
     return res.json({ success: false, message: 'All fields are required' });
   }
+
+  if (!EMAIL_REGEX.test(email)) {
+    return res.json({ success: false, message: 'Please enter a valid email address' });
+  }
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return res.json({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+  }
+
   try {
     const hashed = await bcrypt.hash(password, 10);
     await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [name, email, hashed]);
     res.json({ success: true, message: 'Account created' });
   } catch (err) {
-    console.log(err);
-    res.json({ success: false, message: 'Email already exists' });
+    if (err.code === 'ER_DUP_ENTRY') {
+      res.json({ success: false, message: 'Email already exists' });
+    } else {
+      console.log(err);
+      res.json({ success: false, message: 'Something went wrong, please try again' });
+    }
   }
 });
 
@@ -25,6 +42,10 @@ router.post('/login', async (req, res) => {
 
   if (!email || !password) {
     return res.json({ success: false, message: 'Email and password are required' });
+  }
+
+  if (!EMAIL_REGEX.test(email)) {
+    return res.json({ success: false, message: 'Please enter a valid email address' });
   }
 
   const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
