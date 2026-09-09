@@ -6,6 +6,7 @@
  *   GET  /api/classes           - filtered class list          (Checkpoint 1)
  *   POST /api/match-ingredients - classes ranked by ingredient match (Checkpoint 2)
  *   POST /api/add-ingredient    - insert a new ingredient if missing (Checkpoint 2)
+ *   POST /api/upload-class      - Contributor class submission  (Checkpoint 3)
  *
  * Matches Pranathi's actual schema:
  *   classes(id, title, category, budget, time_needed, taste,
@@ -18,6 +19,10 @@
  */
 
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { randomUUID } = require('crypto');
 const pool = require('../db');
 
 const router = express.Router();
@@ -35,6 +40,15 @@ const FILTERABLE_FIELDS = [
     'skill_level',
     'meal_time',
 ];
+
+// Values must match the schema's ENUM definitions exactly
+const VALID_CATEGORIES = ['gut_health', 'family', 'quick_no_stove', 'veg', 'nonveg_egg', 'seafood'];
+const VALID_BUDGETS = ['low', 'medium', 'high'];
+const VALID_TIME_NEEDED = ['quick', 'medium', 'long'];
+const VALID_TASTES = ['spicy', 'sweet', 'neutral'];
+const VALID_SKILL_LEVELS = ['beginner', 'intermediate', 'advanced'];
+const VALID_MEAL_TIMES = ['morning', 'afternoon', 'evening', 'night'];
+const VALID_SOURCE_TYPES = ['native', 'youtube', 'external'];
 
 // ---------------------------------------------------------------------
 // GET /api/classes - filtered class list
@@ -71,10 +85,6 @@ router.get('/classes', async (req, res) => {
 
 // ---------------------------------------------------------------------
 // POST /api/match-ingredients
-// Body: { ingredients: string[], meal_time?: string, category?: string }
-//   ingredients - names the user has on hand, e.g. ["Rice", "Onion", "Egg"]
-// Returns approved classes ranked by how many of their required
-// ingredients the user already has.
 // ---------------------------------------------------------------------
 router.post('/match-ingredients', async (req, res) => {
     const ingredientNames = Array.isArray(req.body.ingredients) ? req.body.ingredients : [];
@@ -86,7 +96,6 @@ router.post('/match-ingredients', async (req, res) => {
     }
 
     try {
-        // 1. Resolve the given ingredient names to IDs (case-insensitive)
         const placeholders = ingredientNames.map(() => '?').join(',');
         const [ingredientRows] = await pool.query(
             `SELECT id, name FROM ingredients WHERE LOWER(name) IN (${placeholders})`,
@@ -99,8 +108,6 @@ router.post('/match-ingredients', async (req, res) => {
             return respond(res, true, 'None of the given ingredients are recognized yet.', []);
         }
 
-        // 2. Score each approved class by how many of its required
-        //    ingredients overlap with the ones the user has
         const idPlaceholders = matchedIds.map(() => '?').join(',');
 
         let sql = `
@@ -149,9 +156,6 @@ router.post('/match-ingredients', async (req, res) => {
 
 // ---------------------------------------------------------------------
 // POST /api/add-ingredient
-// Body: { name: string }
-// Inserts a new ingredient (flagged is_user_submitted = true) if it
-// doesn't already exist (case-insensitive check).
 // ---------------------------------------------------------------------
 router.post('/add-ingredient', async (req, res) => {
     const name = (req.body.name || '').trim();
@@ -189,6 +193,172 @@ router.post('/add-ingredient', async (req, res) => {
     } catch (err) {
         console.error(err);
         return respond(res, false, 'Failed to add ingredient.', null, 500);
+    }
+});
+
+// ---------------------------------------------------------------------
+// Multer setup — only used when source_type = 'native'
+// ---------------------------------------------------------------------
+const uploadDir = path.join(__dirname, '..', 'uploads', 'classes');
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const ALLOWED_MIME_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+const MAX_BYTES = 100 * 1024 * 1024; // 100MB
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `class_${randomUUID()}${ext}`);
+    },
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: MAX_BYTES },
+    fileFilter: (req, file, cb) => {
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('Unsupported video format. Use mp4, mov, or webm.'));
+        }
+        cb(null, true);
+    },
+});
+
+// ---------------------------------------------------------------------
+// POST /api/upload-class
+//
+// If source_type = 'native': multipart/form-data with a `video` file field.
+// If source_type = 'youtube' | 'external': JSON or form body with a
+//   `video_url` string field, no file needed.
+//
+// Common fields (form or JSON):
+//   title, category, budget, time_needed, taste, skill_level,
+//   meal_time, uploader_id, source_type, ingredients (comma-separated
+//   names, optional)
+// ---------------------------------------------------------------------
+router.post('/upload-class', (req, res, next) => {
+    // Multer only actually needs to run for native (file) uploads, but it's
+    // harmless to run for all multipart requests — it just won't find a file
+    // for youtube/external submissions sent as multipart too.
+    upload.single('video')(req, res, (err) => {
+        if (err) {
+            return respond(res, false, err.message, null, 400);
+        }
+        next();
+    });
+}, async (req, res) => {
+    const {
+        title,
+        category,
+        budget = 'low',
+        time_needed: timeNeeded = 'quick',
+        taste = 'neutral',
+        skill_level: skillLevel = 'beginner',
+        meal_time: mealTime = 'morning',
+        source_type: sourceType = 'native',
+        ingredients: ingredientsRaw = '',
+    } = req.body;
+
+    const uploaderId = parseInt(req.body.uploader_id, 10);
+    const cleanTitle = (title || '').trim();
+
+    // --- Validation -----------------------------------------------------
+    if (!uploaderId || !cleanTitle) {
+        if (req.file) fs.unlink(req.file.path, () => {});
+        return respond(res, false, 'uploader_id and title are required.', null, 400);
+    }
+    if (!VALID_CATEGORIES.includes(category)) {
+        if (req.file) fs.unlink(req.file.path, () => {});
+        return respond(res, false, `category must be one of: ${VALID_CATEGORIES.join(', ')}`, null, 400);
+    }
+    if (!VALID_SOURCE_TYPES.includes(sourceType)) {
+        if (req.file) fs.unlink(req.file.path, () => {});
+        return respond(res, false, `source_type must be one of: ${VALID_SOURCE_TYPES.join(', ')}`, null, 400);
+    }
+    if (budget && !VALID_BUDGETS.includes(budget)) {
+        return respond(res, false, `budget must be one of: ${VALID_BUDGETS.join(', ')}`, null, 400);
+    }
+    if (timeNeeded && !VALID_TIME_NEEDED.includes(timeNeeded)) {
+        return respond(res, false, `time_needed must be one of: ${VALID_TIME_NEEDED.join(', ')}`, null, 400);
+    }
+    if (taste && !VALID_TASTES.includes(taste)) {
+        return respond(res, false, `taste must be one of: ${VALID_TASTES.join(', ')}`, null, 400);
+    }
+    if (skillLevel && !VALID_SKILL_LEVELS.includes(skillLevel)) {
+        return respond(res, false, `skill_level must be one of: ${VALID_SKILL_LEVELS.join(', ')}`, null, 400);
+    }
+    if (mealTime && !VALID_MEAL_TIMES.includes(mealTime)) {
+        return respond(res, false, `meal_time must be one of: ${VALID_MEAL_TIMES.join(', ')}`, null, 400);
+    }
+
+    // --- Resolve the video URL -------------------------------------------
+    let videoUrl;
+    if (sourceType === 'native') {
+        if (!req.file) {
+            return respond(res, false, 'A video file is required when source_type is "native".', null, 400);
+        }
+        videoUrl = path.join('uploads', 'classes', req.file.filename).replace(/\\/g, '/');
+    } else {
+        const providedUrl = (req.body.video_url || '').trim();
+        if (!providedUrl) {
+            if (req.file) fs.unlink(req.file.path, () => {});
+            return respond(res, false, 'video_url is required when source_type is "youtube" or "external".', null, 400);
+        }
+        videoUrl = providedUrl;
+    }
+
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [result] = await conn.query(
+            `INSERT INTO classes
+                (title, category, budget, time_needed, taste, skill_level,
+                 meal_time, video_url, source_type, uploader_id, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+            [cleanTitle, category, budget, timeNeeded, taste, skillLevel, mealTime, videoUrl, sourceType, uploaderId]
+        );
+        const classId = result.insertId;
+
+        if (ingredientsRaw) {
+            const names = ingredientsRaw
+                .split(',')
+                .map((n) => n.trim())
+                .filter(Boolean);
+
+            for (const name of names) {
+                const [existingIngredient] = await conn.query(
+                    'SELECT id FROM ingredients WHERE LOWER(name) = ?',
+                    [name.toLowerCase()]
+                );
+
+                let ingredientId;
+                if (existingIngredient.length > 0) {
+                    ingredientId = existingIngredient[0].id;
+                } else {
+                    const [inserted] = await conn.query(
+                        'INSERT INTO ingredients (name, is_user_submitted) VALUES (?, TRUE)',
+                        [name]
+                    );
+                    ingredientId = inserted.insertId;
+                }
+
+                await conn.query(
+                    'INSERT IGNORE INTO class_ingredients (class_id, ingredient_id) VALUES (?, ?)',
+                    [classId, ingredientId]
+                );
+            }
+        }
+
+        await conn.commit();
+        return respond(res, true, 'Class submitted and pending review.', { class_id: classId }, 201);
+    } catch (err) {
+        await conn.rollback();
+        if (req.file) fs.unlink(req.file.path, () => {});
+        console.error(err);
+        return respond(res, false, 'Upload failed while saving to the database.', null, 500);
+    } finally {
+        conn.release();
     }
 });
 
