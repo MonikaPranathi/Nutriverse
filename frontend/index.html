@@ -4,15 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nutriverse</title>
-<!--
-  PLACEHOLDER — this is a stand-in homepage, not the real "personalized
-  Home feed" page from section 7 of the procedure doc. That page belongs
-  to Member 3 (Home feed / Login-Signup / Meal-time prompt) and should
-  eventually replace this file: showing a feed personalized by the
-  meal-time prompt answer, pulling from GET /api/classes, etc.
-  This version just exists so the nav links in the other pages don't
-  point at an empty file. Swap it out once the real one is built.
--->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
@@ -33,25 +24,129 @@
         <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
         <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
         <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
+        <li class="nav-item" id="nav-auth"><a class="nav-link" href="login.html">Log In</a></li>
       </ul>
     </div>
   </div>
 </nav>
 
 <div class="container py-4">
-  <div class="nv-hero text-center">
-    <h1>Nutriverse 🍳</h1>
-    <p class="mx-auto mb-4">Bite-sized cooking classes from real people —
-    filter by mood, mealtime, and what's in your kitchen.</p>
-    <a href="classlisting.html" class="btn btn-nv-primary btn-lg">Browse classes</a>
+  <div class="nv-hero" id="hero">
+    <h1 id="hero-title">Nutriverse 🍳</h1>
+    <p class="mb-0" id="hero-subtitle">Bite-sized cooking classes from real people — filter by mood, mealtime, and what's in your kitchen.</p>
+    <a href="classlisting.html" class="btn btn-nv-primary btn-lg mt-3" id="hero-cta">Browse classes</a>
   </div>
 
-  <div class="nv-empty-state">
-    <h5>This is a placeholder homepage</h5>
-    <p class="mb-0">The real personalized home feed (Member 3's page) isn't
-    built yet. This just keeps the "Home" link working in the meantime.</p>
+  <div id="error-banner" class="alert alert-warning d-none"></div>
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="nv-heading mb-0" id="feed-heading">Latest classes</h4>
+    <a href="classlisting.html" class="small">See all &rarr;</a>
+  </div>
+
+  <div id="feed-grid" class="nv-masonry"></div>
+  <div id="empty-state" class="nv-empty-state d-none">
+    <h5>Nothing here yet</h5>
+    <p class="mb-0">Check back soon, or <a href="classlisting.html">browse all classes</a>.</p>
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  // See mealtime.html: /api/set-meal-time doesn't persist to a table yet,
+  // so the chosen meal time only lives in this browser's sessionStorage.
+  function nvGetMealTime() {
+    return sessionStorage.getItem("nv_meal_time");
+  }
+
+  const user = nvGetCurrentUser();
+  if (!user) {
+    window.location.href = "login.html";
+  } else {
+    const mealTime = nvGetMealTime();
+    const MEAL_LABELS = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", night: "Night" };
+
+    function setupHeroAndNav() {
+      document.getElementById("nav-auth").innerHTML = `<a class="nav-link" href="#" id="logout-link">Log out</a>`;
+
+      if (mealTime) {
+        document.getElementById("hero-title").textContent = `Good ${MEAL_LABELS[mealTime].toLowerCase()}, ${user.name} 🍳`;
+        document.getElementById("hero-subtitle").textContent =
+          `Here's what fits a ${MEAL_LABELS[mealTime].toLowerCase()} mealtime today.`;
+        document.getElementById("hero-cta").textContent = "Change mealtime";
+        document.getElementById("hero-cta").href = "mealtime.html";
+        document.getElementById("feed-heading").textContent = `Picked for ${MEAL_LABELS[mealTime]}`;
+      } else {
+        document.getElementById("hero-title").textContent = `Welcome back, ${user.name} 🍳`;
+        document.getElementById("hero-subtitle").innerHTML =
+          `Tell us what time it is and we'll personalize your feed. <a href="mealtime.html">Set mealtime &rarr;</a>`;
+        document.getElementById("feed-heading").textContent = "Latest classes";
+      }
+    }
+
+    function renderFeed(classes) {
+      const grid = document.getElementById("feed-grid");
+      const empty = document.getElementById("empty-state");
+      grid.innerHTML = "";
+
+      if (classes.length === 0) {
+        empty.classList.remove("d-none");
+        return;
+      }
+      empty.classList.add("d-none");
+
+      classes.forEach((c) => {
+        const item = document.createElement("div");
+        item.className = "nv-masonry-item";
+        item.innerHTML = `
+          <a href="classdetail.html?id=${c.id}" class="text-decoration-none">
+            <div class="nv-card">
+              ${nvCardArtHtml(c)}
+              <div class="p-3">
+                <h6 class="nv-heading mb-1">${c.title}</h6>
+                <div class="text-muted small mb-2">${nvLabel("meal_time", c.meal_time)} &middot; ${nvLabel("time_needed", c.time_needed)}</div>
+                <div class="d-flex flex-wrap gap-1">
+                  <span class="badge text-bg-light">${nvLabel("category", c.category)}</span>
+                  <span class="badge text-bg-light">${nvLabel("skill_level", c.skill_level)}</span>
+                </div>
+              </div>
+            </div>
+          </a>`;
+        grid.appendChild(item);
+      });
+    }
+
+    async function loadFeed() {
+      try {
+        const filters = { status: "approved" };
+        if (mealTime) filters.meal_time = mealTime;
+        // Cap the home feed to a handful of cards; full browsing happens
+        // on classlisting.html. GET /api/classes has no limit/paging param
+        // yet, so we just slice client-side.
+        const classes = await nvGetClasses(filters);
+        renderFeed(classes.slice(0, 9));
+      } catch (err) {
+        const banner = document.getElementById("error-banner");
+        banner.textContent = `Couldn't load classes: ${err.message}. Is the server running on ${API_BASE}?`;
+        banner.classList.remove("d-none");
+        renderFeed([]);
+      }
+    }
+
+    setupHeroAndNav();
+    loadFeed();
+
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "logout-link") {
+        e.preventDefault();
+        sessionStorage.removeItem("nv_user");
+        sessionStorage.removeItem("nv_meal_time");
+        window.location.href = "login.html";
+      }
+    });
+  }
+</script>
 </body>
 </html>

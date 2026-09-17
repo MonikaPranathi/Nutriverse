@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search by Ingredients — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container py-3" style="max-width: 620px;">
+
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <a href="index.html" class="nv-back-btn" aria-label="Back">&larr;</a>
+    <h1 class="nv-heading mb-0" style="font-size:1.5rem;">Search by ingredients</h1>
+  </div>
+
+  <div class="position-relative mb-4">
+    <span class="nv-search-icon">&#128269;</span>
+    <input type="text" id="ingredient-search" class="form-control nv-search-input"
+           placeholder="What's in your pantry?" autocomplete="off">
+  </div>
+
+  <div id="error-banner" class="alert alert-warning d-none"></div>
+
+  <div id="selected-section" class="d-none mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="nv-heading mb-0">Selected</h6>
+      <button id="clear-all-btn" class="btn btn-sm btn-link p-0 text-decoration-none fw-semibold" style="color:var(--chili);">Clear all</button>
+    </div>
+    <div id="selected-chips" class="d-flex flex-wrap gap-2"></div>
+  </div>
+
+  <h6 class="nv-heading mb-3">Popular</h6>
+  <div id="ingredient-grid" class="nv-ing-grid mb-3"></div>
+  <div id="no-results" class="text-muted small text-center py-3 d-none">No ingredients match that search.</div>
+
+  <details class="mb-4">
+    <summary class="text-muted small" style="cursor:pointer;">Narrow by meal time or category (optional)</summary>
+    <div class="row g-3 mt-1">
+      <div class="col-6">
+        <select class="form-select" id="filter-meal-time">
+          <option value="">Any meal time</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <select class="form-select" id="filter-category">
+          <option value="">Any category</option>
+        </select>
+      </div>
+    </div>
+  </details>
+
+  <div id="results-section" class="d-none">
+    <hr class="mb-4">
+    <div id="results-heading" class="text-muted mb-2"></div>
+    <div id="results-list"></div>
+    <div id="empty-state" class="nv-empty-state d-none">
+      <h5>No matches yet</h5>
+      <p class="mb-0">Try selecting a few more ingredients.</p>
+    </div>
+  </div>
+
+  <!-- spacer so content isn't hidden behind the floating button -->
+  <div style="height: 90px;"></div>
+</div>
+
+<button id="continue-btn" class="nv-continue-btn d-none">
+  <span class="nv-continue-check">&#10003;</span>
+  <span id="continue-count">0</span>
+  <span>Continue</span>
+</button>
+
+<style>
+  .nv-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-size: 1.2rem;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .nv-back-btn:hover { background: var(--border); color: var(--ink); }
+
+  .nv-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+  }
+  .nv-search-input {
+    padding-left: 2.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    height: 52px;
+  }
+  .nv-search-input:focus {
+    border-color: var(--herb-green);
+    box-shadow: 0 0 0 0.2rem rgba(47, 74, 56, 0.12);
+  }
+
+  .nv-selected-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.4rem 0.5rem 0.4rem 0.8rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .nv-selected-chip .remove-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--chili);
+    color: #fff;
+    font-size: 0.7rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .nv-ing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.9rem;
+  }
+  .nv-ing-box {
+    position: relative;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem 0.5rem 0.8rem;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .nv-ing-box:hover { border-color: var(--turmeric); transform: translateY(-2px); }
+  .nv-ing-box.selected { border-color: var(--herb-green); background: #F3F8F4; }
+  .nv-ing-box .icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #FBF1E0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 0.5rem;
+  }
+  .nv-ing-box .label { font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+  .nv-ing-box.selected .label { color: var(--herb-green); }
+  .nv-ing-box .check-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--herb-green);
+    color: #fff;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+
+  .nv-continue-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--turmeric);
+    color: var(--ink);
+    border: none;
+    border-radius: 999px;
+    padding: 0.9rem 1.5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 8px 20px rgba(224, 164, 41, 0.4);
+  }
+  .nv-continue-btn:hover { background: #c98f1e; }
+  .nv-continue-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    font-size: 0.8rem;
+  }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  // Requires login, same as the rest of Member 3's pages.
+  const user = nvGetCurrentUser();
+  if (!user) {
+    window.location.href = "login.html";
+  }
+
+  // Curated common-ingredient list rendered as tap-to-select cards, so
+  // people don't have to type every ingredient by hand. Icons come from
+  // the existing nvIngredientIcon() lookup in ingredient-icons.js.
+  const COMMON_INGREDIENTS = [
+    "Chicken", "Beef", "Egg", "Rice", "Paneer", "Tomato",
+    "Onion", "Potato", "Garlic", "Ginger", "Oil", "Milk",
+    "Curd", "Lemon", "Carrot", "Spinach", "Chili", "Pepper",
+    "Coconut", "Flour", "Sugar", "Fish", "Shrimp", "Mushroom",
+    "Bread", "Dal",
+  ];
+
+  const selected = new Set(); // built-in-list selections, keyed by name
+  const customSelected = new Set(); // free-typed extras not in the grid
+  let searchQuery = "";
+
+  function allSelectedNames() {
+    return [...selected, ...customSelected];
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById("ingredient-grid");
+    const noResults = document.getElementById("no-results");
+    grid.innerHTML = "";
+
+    const q = searchQuery.trim().toLowerCase();
+    const visible = q
+      ? COMMON_INGREDIENTS.filter((n) => n.toLowerCase().includes(q))
+      : COMMON_INGREDIENTS;
+
+    noResults.classList.toggle("d-none", visible.length > 0);
+
+    visible.forEach((name) => {
+      const isSelected = selected.has(name);
+      const box = document.createElement("div");
+      box.className = "nv-ing-box" + (isSelected ? " selected" : "");
+      box.innerHTML = `
+        ${isSelected ? '<span class="check-badge">&#10003;</span>' : ""}
+        <div class="icon-circle">${nvIngredientIcon(name)}</div>
+        <div class="label">${name}</div>`;
+      box.addEventListener("click", () => {
+        if (selected.has(name)) {
+          selected.delete(name);
+        } else {
+          selected.add(name);
+        }
+        renderAll();
+      });
+      grid.appendChild(box);
+    });
+  }
+
+  function renderSelectedChips() {
+    const section = document.getElementById("selected-section");
+    const row = document.getElementById("selected-chips");
+    const names = allSelectedNames();
+    row.innerHTML = "";
+
+    if (names.length === 0) {
+      section.classList.add("d-none");
+      return;
+    }
+    section.classList.remove("d-none");
+
+    names.forEach((name) => {
+      const chip = document.createElement("span");
+      chip.className = "nv-selected-chip";
+      chip.innerHTML = `${nvIngredientIcon(name)} ${name} <span class="remove-x">&times;</span>`;
+      chip.querySelector(".remove-x").addEventListener("click", () => {
+        selected.delete(name);
+        customSelected.delete(name);
+        renderAll();
+      });
+      row.appendChild(chip);
+    });
+  }
+
+  function renderContinueButton() {
+    const btn = document.getElementById("continue-btn");
+    const count = allSelectedNames().length;
+    document.getElementById("continue-count").textContent = count;
+    btn.classList.toggle("d-none", count === 0);
+  }
+
+  function renderAll() {
+    renderGrid();
+    renderSelectedChips();
+    renderContinueButton();
+  }
+
+  document.getElementById("clear-all-btn").addEventListener("click", () => {
+    selected.clear();
+    customSelected.clear();
+    renderAll();
+  });
+
+  // The search box doubles as a live filter over the Popular grid, and —
+  // if you press Enter on something that isn't in the curated list — adds
+  // it as a custom selection (shown in "Selected" but not in the grid).
+  const searchInput = document.getElementById("ingredient-search");
+  searchInput.addEventListener("input", (e) => {
+    searchQuery = e.target.value;
+    renderGrid();
+  });
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const name = searchQuery.trim();
+    if (!name) return;
+    const inList = COMMON_INGREDIENTS.find((n) => n.toLowerCase() === name.toLowerCase());
+    if (inList) {
+      selected.add(inList);
+    } else {
+      customSelected.add(name);
+    }
+    searchQuery = "";
+    searchInput.value = "";
+    renderAll();
+  });
+
+  function fillOptional(id, field) {
+    const el = document.getElementById(id);
+    NV_ENUMS[field].forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      el.appendChild(opt);
+    });
+  }
+  fillOptional("filter-meal-time", "meal_time");
+  fillOptional("filter-category", "category");
+
+  function renderResults(matches) {
+    document.getElementById("results-section").classList.remove("d-none");
+    const heading = document.getElementById("results-heading");
+    const list = document.getElementById("results-list");
+    const empty = document.getElementById("empty-state");
+    list.innerHTML = "";
+
+    if (matches.length === 0) {
+      heading.classList.add("d-none");
+      empty.classList.remove("d-none");
+      return;
+    }
+    empty.classList.add("d-none");
+    heading.classList.remove("d-none");
+    heading.textContent = `${matches.length} class${matches.length === 1 ? "" : "es"} ranked by match`;
+
+    matches.forEach((m) => {
+      const pct = Math.round(m.match_score * 100);
+      const row = document.createElement("a");
+      row.href = `classdetail.html?id=${m.class_id}`;
+      row.className = "text-decoration-none";
+      row.innerHTML = `
+        <div class="nv-card p-3 mb-2 d-flex align-items-center justify-content-between">
+          <div>
+            <div class="nv-heading">${m.title}</div>
+            <div class="text-muted small">${m.match_count} of ${m.total_required} ingredients matched</div>
+          </div>
+          <span class="badge btn-nv-accent" style="font-size:0.9rem;">${pct}%</span>
+        </div>`;
+      list.appendChild(row);
+    });
+
+    document.getElementById("results-section").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  document.getElementById("continue-btn").addEventListener("click", async () => {
+    const banner = document.getElementById("error-banner");
+    banner.classList.add("d-none");
+    const btn = document.getElementById("continue-btn");
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span>Searching&hellip;</span>`;
+
+    const body = { ingredients: allSelectedNames() };
+    const mealTime = document.getElementById("filter-meal-time").value;
+    const category = document.getElementById("filter-category").value;
+    if (mealTime) body.meal_time = mealTime;
+    if (category) body.category = category;
+
+    try {
+      // POST /api/match-ingredients (classes.js) returns {success, message,
+      // data} like the other classes.js routes, so nvApi()'s generic
+      // {success, data} unwrapping is correct here (unlike auth.js's
+      // endpoints — see login.html/mealtime.html for that gotcha).
+      // It only matches ingredient names it already recognizes in the
+      // ingredients table, and only classes that already have their
+      // ingredient list filled in via class_ingredients — a custom name
+      // typed into the search box won't match anything until someone adds
+      // it via POST /api/add-ingredient.
+      const matches = await nvApi("/match-ingredients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      renderResults(matches);
+    } catch (err) {
+      banner.textContent = err.message;
+      banner.classList.remove("d-none");
+      renderResults([]);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  });
+
+  renderAll();
+</script>
+</body>
+</html>

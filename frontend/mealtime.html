@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What time is it? — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">Nutriverse</a>
+  </div>
+</nav>
+
+<div class="container py-5 text-center" style="max-width: 620px;">
+  <h1 class="mb-2">What are you cooking for? 🍽️</h1>
+  <p class="text-muted mb-4">We'll use this to show you classes that fit right now.</p>
+
+  <div id="error-banner" class="alert alert-warning d-none"></div>
+
+  <div class="row g-3" id="meal-options">
+    <div class="col-6">
+      <button class="btn nv-meal-btn w-100 py-4" data-value="morning">🌅<br>Morning</button>
+    </div>
+    <div class="col-6">
+      <button class="btn nv-meal-btn w-100 py-4" data-value="afternoon">☀️<br>Afternoon</button>
+    </div>
+    <div class="col-6">
+      <button class="btn nv-meal-btn w-100 py-4" data-value="evening">🌇<br>Evening</button>
+    </div>
+    <div class="col-6">
+      <button class="btn nv-meal-btn w-100 py-4" data-value="night">🌙<br>Night</button>
+    </div>
+  </div>
+
+  <a href="index.html" class="d-inline-block mt-4 text-muted small">Skip for now</a>
+</div>
+
+<style>
+  .nv-meal-btn {
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--ink);
+  }
+  .nv-meal-btn:hover { border-color: var(--herb-green); color: var(--herb-green); }
+  .nv-meal-btn:disabled { opacity: 0.6; }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script>
+  const user = nvGetCurrentUser();
+  if (!user) {
+    // Meal-time is tied to a logged-in user_id per auth.js's
+    // /api/set-meal-time contract, so bounce anonymous visitors to login.
+    window.location.href = "login.html";
+  }
+
+  // NOTE: /api/set-meal-time (auth.js) currently validates user_id +
+  // meal_time and returns { success: true } but never writes the value
+  // to a table — there's no users.meal_time column yet. So alongside
+  // calling the real endpoint (to keep the contract honored once the
+  // backend does persist it), we also stash the choice in sessionStorage
+  // so the home feed can actually use it today. Swap nvGetMealTime()
+  // for a value read back from the user object once the backend adds
+  // real persistence.
+  function nvSetMealTime(value) {
+    sessionStorage.setItem("nv_meal_time", value);
+  }
+
+  document.querySelectorAll(".nv-meal-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const banner = document.getElementById("error-banner");
+      banner.classList.add("d-none");
+      document.querySelectorAll(".nv-meal-btn").forEach((b) => (b.disabled = true));
+
+      try {
+        const res = await fetch(`${API_BASE}/set-meal-time`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: user.id, meal_time: btn.dataset.value }),
+        });
+        const data = await res.json().catch(() => ({ success: false, message: "Invalid server response." }));
+        if (!data.success) {
+          throw new Error(data.message || "Could not save that.");
+        }
+        nvSetMealTime(btn.dataset.value);
+        window.location.href = "index.html";
+      } catch (err) {
+        banner.textContent = err.message;
+        banner.classList.remove("d-none");
+        document.querySelectorAll(".nv-meal-btn").forEach((b) => (b.disabled = false));
+      }
+    });
+  });
+</script>
+</body>
+</html>
