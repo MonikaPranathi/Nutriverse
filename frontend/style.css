@@ -1,0 +1,119 @@
+/* Nutriverse shared design tokens — keep in sync with index.html's root variables */
+:root {
+  --bg: #FBF6EA;              /* warm off-white */
+  --herb-green: #2F4A38;      /* deep herb green — headings */
+  --herb-green-dark: #203226;
+  --turmeric: #E0A429;        /* turmeric gold — accent */
+  --chili: #C1442D;           /* chili red — accent */
+  --ink: #2B2620;             /* body text */
+  --card-bg: #FFFFFF;
+  --border: #E7DCC7;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Work Sans', sans-serif;
+}
+
+h1, h2, h3, h4, .nv-heading {
+  font-family: 'Fraunces', serif;
+  color: var(--herb-green);
+}
+
+a { color: var(--herb-green); }
+a:hover { color: var(--chili); }
+
+.nv-navbar {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+}
+.nv-navbar .navbar-brand {
+  font-family: 'Fraunces', serif;
+  color: var(--herb-green);
+  font-weight: 600;
+}
+.nv-navbar .nav-link {
+  color: var(--ink);
+}
+.nv-navbar .nav-link.active,
+.nv-navbar .nav-link:hover {
+  color: var(--herb-green);
+  font-weight: 600;
+}
+
+.btn-nv-primary {
+  background: var(--herb-green);
+  border-color: var(--herb-green);
+  color: #fff;
+}
+.btn-nv-primary:hover {
+  background: var(--herb-green-dark);
+  border-color: var(--herb-green-dark);
+  color: #fff;
+}
+.btn-nv-accent {
+  background: var(--turmeric);
+  border-color: var(--turmeric);
+  color: var(--ink);
+}
+.btn-nv-accent:hover {
+  background: #c98f1e;
+  border-color: #c98f1e;
+  color: var(--ink);
+}
+.btn-nv-danger {
+  background: var(--chili);
+  border-color: var(--chili);
+  color: #fff;
+}
+.btn-nv-danger:hover {
+  background: #a4381f;
+  border-color: #a4381f;
+  color: #fff;
+}
+
+.nv-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.nv-card .nv-card-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #EFE7D4;
+}
+.nv-chip {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+.nv-chip.selected {
+  background: var(--herb-green);
+  border-color: var(--herb-green);
+  color: #fff;
+}
+.nv-badge-pending { background: var(--turmeric); color: var(--ink); }
+.nv-badge-approved { background: var(--herb-green); color: #fff; }
+.nv-badge-rejected { background: var(--chili); color: #fff; }
+
+.nv-section-title {
+  border-bottom: 2px solid var(--turmeric);
+  display: inline-block;
+  padding-bottom: 0.25rem;
+}
+
+.nv-empty-state {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: #6b6355;
+}

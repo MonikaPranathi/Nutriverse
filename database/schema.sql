@@ -1,4 +1,5 @@
 -- Nutriverse database schema
+USE nutriverse;
 
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,

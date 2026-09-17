@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload a Class — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">Nutriverse</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nvNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="class-listing.html">Classes</a></li>
+        <li class="nav-item"><a class="nav-link" href="ingredient-match.html">Ingredient Match</a></li>
+        <li class="nav-item"><a class="nav-link active" href="upload.html">Upload</a></li>
+        <li class="nav-item"><a class="nav-link" href="user-dashboard.html">Dashboard</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4" style="max-width: 720px;">
+  <h1 class="mb-1">Upload a class</h1>
+  <p class="text-muted mb-4">Share a recipe class with the Nutriverse community. It'll go to an admin for review before it goes live.</p>
+
+  <div id="login-warning" class="alert alert-warning d-none">
+    You need to be logged in to upload a class.
+  </div>
+  <div id="success-banner" class="alert alert-success d-none"></div>
+  <div id="error-banner" class="alert alert-danger d-none"></div>
+
+  <form id="upload-form" class="nv-card p-4">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Title</label>
+      <input type="text" class="form-control" id="title" required>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Category</label>
+        <select class="form-select" id="category" required></select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Meal time</label>
+        <select class="form-select" id="meal_time" required></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Skill level</label>
+        <select class="form-select" id="skill_level" required></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Time needed</label>
+        <select class="form-select" id="time_needed" required></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Budget</label>
+        <select class="form-select" id="budget" required></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Taste</label>
+        <select class="form-select" id="taste" required></select>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Ingredients</label>
+      <input type="text" class="form-control" id="ingredients" placeholder="rice, paneer, turmeric (comma-separated)">
+      <div class="form-text">Comma-separated — matches the backend's expected format.</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Video source</label>
+      <select class="form-select mb-2" id="source_type"></select>
+      <div id="native-video-field">
+        <input type="file" class="form-control" id="video_file" accept="video/mp4,video/quicktime,video/webm">
+        <div class="form-text">mp4, mov, or webm — up to 100MB.</div>
+      </div>
+      <div id="url-video-field" class="d-none">
+        <input type="url" class="form-control" id="video_url" placeholder="https://...">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-nv-primary" id="submit-btn">Submit for review</button>
+  </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script>
+  function fillSelect(id, field) {
+    const el = document.getElementById(id);
+    el.innerHTML = NV_ENUMS[field].map(o => `<option value="${o.value}">${o.label}</option>`).join("");
+  }
+  ["category", "meal_time", "skill_level", "time_needed", "budget", "taste", "source_type"]
+    .forEach(field => fillSelect(field, field));
+
+  document.getElementById("source_type").addEventListener("change", (e) => {
+    const isNative = e.target.value === "native";
+    document.getElementById("native-video-field").classList.toggle("d-none", !isNative);
+    document.getElementById("url-video-field").classList.toggle("d-none", isNative);
+  });
+
+  const currentUser = nvGetCurrentUser();
+  if (!currentUser) {
+    document.getElementById("login-warning").classList.remove("d-none");
+    document.getElementById("submit-btn").disabled = true;
+  }
+
+  document.getElementById("upload-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorBanner = document.getElementById("error-banner");
+    const successBanner = document.getElementById("success-banner");
+    errorBanner.classList.add("d-none");
+    successBanner.classList.add("d-none");
+
+    const sourceType = document.getElementById("source_type").value;
+    const videoFile = document.getElementById("video_file").files[0];
+    const videoUrl = document.getElementById("video_url").value;
+
+    if (sourceType === "native" && !videoFile) {
+      errorBanner.textContent = "Please choose a video file.";
+      errorBanner.classList.remove("d-none");
+      return;
+    }
+    if (sourceType !== "native" && !videoUrl) {
+      errorBanner.textContent = "Please provide a video URL.";
+      errorBanner.classList.remove("d-none");
+      return;
+    }
+
+    const fields = {
+      uploader_id: currentUser.id,
+      title: document.getElementById("title").value,
+      category: document.getElementById("category").value,
+      meal_time: document.getElementById("meal_time").value,
+      skill_level: document.getElementById("skill_level").value,
+      time_needed: document.getElementById("time_needed").value,
+      budget: document.getElementById("budget").value,
+      taste: document.getElementById("taste").value,
+      source_type: sourceType,
+      ingredients: document.getElementById("ingredients").value,
+    };
+    if (sourceType !== "native") fields.video_url = videoUrl;
+
+    try {
+      const result = await nvUploadClass(fields, sourceType === "native" ? videoFile : null);
+      successBanner.textContent = `Class submitted for review (id: ${result.class_id}).`;
+      successBanner.classList.remove("d-none");
+      document.getElementById("upload-form").reset();
+      ["category", "meal_time", "skill_level", "time_needed", "budget", "taste", "source_type"]
+        .forEach(field => fillSelect(field, field));
+      document.getElementById("url-video-field").classList.add("d-none");
+    } catch (err) {
+      errorBanner.textContent = err.message;
+      errorBanner.classList.remove("d-none");
+    }
+  });
+</script>
+</body>
+</html>

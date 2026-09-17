@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Detail — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">Nutriverse</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nvNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link active" href="class-listing.html">Classes</a></li>
+        <li class="nav-item"><a class="nav-link" href="ingredient-match.html">Ingredient Match</a></li>
+        <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
+        <li class="nav-item"><a class="nav-link" href="user-dashboard.html">Dashboard</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4" id="detail-root">
+  <div class="text-muted">Loading class…</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const classId = params.get("id");
+
+  function videoPlayerMarkup(cls) {
+    if (cls.source_type === "youtube") {
+      return `
+        <div class="ratio ratio-16x9">
+          <iframe src="${nvToYoutubeEmbed(cls.video_url)}" title="${cls.title}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen></iframe>
+        </div>`;
+    }
+    if (cls.source_type === "native") {
+      // NOTE: server.js does not currently serve the uploads/ folder
+      // statically (no express.static for it) — this <video> tag will
+      // 404 until that's added on the backend.
+      return `
+        <video controls class="w-100 rounded" style="background:#000;">
+          <source src="${API_BASE.replace("/api", "")}/${cls.video_url}">
+          Your browser doesn't support embedded video.
+        </video>
+        <div class="text-muted small mt-1">
+          If this video doesn't load, the backend needs to serve <code>${cls.video_url}</code> as a static file.
+        </div>`;
+    }
+    // external
+    return `
+      <div class="nv-card p-4 text-center">
+        <p class="mb-2">This class links to an external video.</p>
+        <a href="${cls.video_url}" target="_blank" rel="noopener" class="btn btn-nv-primary">Watch externally</a>
+      </div>`;
+  }
+
+  function renderClass(cls) {
+    const root = document.getElementById("detail-root");
+    document.title = `${cls.title} — Nutriverse`;
+
+    root.innerHTML = `
+      <div class="row g-4">
+        <div class="col-lg-8">
+          ${videoPlayerMarkup(cls)}
+          <h1 class="mt-3 mb-1">${cls.title}</h1>
+          <div class="text-muted mb-3">${nvLabel("meal_time", cls.meal_time)} &middot; ${nvLabel("time_needed", cls.time_needed)} &middot; ${nvLabel("skill_level", cls.skill_level)}</div>
+          <div class="d-flex flex-wrap gap-2 mb-4">
+            <span class="badge text-bg-light">${nvLabel("category", cls.category)}</span>
+            <span class="badge text-bg-light">${nvLabel("budget", cls.budget)} budget</span>
+            <span class="badge text-bg-light">${nvLabel("taste", cls.taste)}</span>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="nv-card p-3">
+            <button class="btn btn-nv-primary w-100" id="like-btn">Like this class</button>
+            <div id="like-status" class="text-muted small mt-2"></div>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById("like-btn").addEventListener("click", async () => {
+      const user = nvGetCurrentUser();
+      const statusEl = document.getElementById("like-status");
+      if (!user) {
+        statusEl.textContent = "Log in to like a class.";
+        return;
+      }
+      try {
+        await nvLikeClass(user.id, cls.id);
+        statusEl.textContent = "Liked ✓";
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    });
+  }
+
+  async function load() {
+    if (!classId) {
+      document.getElementById("detail-root").innerHTML =
+        `<div class="nv-empty-state">No class id in the URL. Go back to <a href="class-listing.html">Classes</a>.</div>`;
+      return;
+    }
+    try {
+      const cls = await nvGetClassById(classId);
+      if (!cls) {
+        document.getElementById("detail-root").innerHTML =
+          `<div class="nv-empty-state">Couldn't find that class.</div>`;
+        return;
+      }
+      renderClass(cls);
+    } catch (err) {
+      document.getElementById("detail-root").innerHTML =
+        `<div class="alert alert-warning">Couldn't load this class: ${err.message}. Is the server running on ${API_BASE}?</div>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
