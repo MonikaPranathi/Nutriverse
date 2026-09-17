@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nutriverse</title>
+<!--
+  PLACEHOLDER — this is a stand-in homepage, not the real "personalized
+  Home feed" page from section 7 of the procedure doc. That page belongs
+  to Member 3 (Home feed / Login-Signup / Meal-time prompt) and should
+  eventually replace this file: showing a feed personalized by the
+  meal-time prompt answer, pulling from GET /api/classes, etc.
+  This version just exists so the nav links in the other pages don't
+  point at an empty file. Swap it out once the real one is built.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">Nutriverse</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nvNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link active" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="classlisting.html">Classes</a></li>
+        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
+        <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
+        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <div class="nv-hero text-center">
+    <h1>Nutriverse 🍳</h1>
+    <p class="mx-auto mb-4">Bite-sized cooking classes from real people —
+    filter by mood, mealtime, and what's in your kitchen.</p>
+    <a href="classlisting.html" class="btn btn-nv-primary btn-lg">Browse classes</a>
+  </div>
+
+  <div class="nv-empty-state">
+    <h5>This is a placeholder homepage</h5>
+    <p class="mb-0">The real personalized home feed (Member 3's page) isn't
+    built yet. This just keeps the "Home" link working in the meantime.</p>
+  </div>
+</div>
+
+</body>
+</html>

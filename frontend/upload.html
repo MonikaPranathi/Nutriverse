@@ -20,10 +20,10 @@
     <div class="collapse navbar-collapse" id="nvNav">
       <ul class="navbar-nav ms-auto">
         <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="class-listing.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredient-match.html">Ingredient Match</a></li>
+        <li class="nav-item"><a class="nav-link" href="classlisting.html">Classes</a></li>
+        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
         <li class="nav-item"><a class="nav-link active" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link" href="user-dashboard.html">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
       </ul>
     </div>
   </div>
@@ -76,6 +76,25 @@
       <label class="form-label fw-semibold">Ingredients</label>
       <input type="text" class="form-control" id="ingredients" placeholder="rice, paneer, turmeric (comma-separated)">
       <div class="form-text">Comma-separated — matches the backend's expected format.</div>
+      <div id="ingredient-preview" class="mt-2"></div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Dish photo</label>
+      <div class="row g-2 align-items-start">
+        <div class="col-4 col-sm-3">
+          <div class="nv-image-preview" id="image-preview">No photo yet</div>
+        </div>
+        <div class="col">
+          <input type="file" class="form-control" id="dish_image" accept="image/png,image/jpeg,image/webp">
+          <div class="form-text">
+            A quick photo of the finished dish so people know what it looks like
+            before they read the whole recipe. <strong>Note:</strong> the
+            backend doesn't have a field for this yet (see project notes) —
+            it'll be sent along, but may not be saved until that's added.
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="mb-3">
@@ -96,7 +115,26 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
 <script>
+  // Live ingredient icon preview as the contributor types
+  document.getElementById("ingredients").addEventListener("input", (e) => {
+    document.getElementById("ingredient-preview").innerHTML = nvIngredientChipsHtml(e.target.value);
+  });
+
+  // Live dish-photo preview
+  document.getElementById("dish_image").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    const preview = document.getElementById("image-preview");
+    if (!file) {
+      preview.innerHTML = "No photo yet";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" alt="Dish preview">`; };
+    reader.readAsDataURL(file);
+  });
+
   function fillSelect(id, field) {
     const el = document.getElementById(id);
     el.innerHTML = NV_ENUMS[field].map(o => `<option value="${o.value}">${o.label}</option>`).join("");
@@ -152,14 +190,18 @@
     };
     if (sourceType !== "native") fields.video_url = videoUrl;
 
+    const imageFile = document.getElementById("dish_image").files[0];
+
     try {
-      const result = await nvUploadClass(fields, sourceType === "native" ? videoFile : null);
+      const result = await nvUploadClass(fields, sourceType === "native" ? videoFile : null, imageFile);
       successBanner.textContent = `Class submitted for review (id: ${result.class_id}).`;
       successBanner.classList.remove("d-none");
       document.getElementById("upload-form").reset();
       ["category", "meal_time", "skill_level", "time_needed", "budget", "taste", "source_type"]
         .forEach(field => fillSelect(field, field));
       document.getElementById("url-video-field").classList.add("d-none");
+      document.getElementById("ingredient-preview").innerHTML = "";
+      document.getElementById("image-preview").innerHTML = "No photo yet";
     } catch (err) {
       errorBanner.textContent = err.message;
       errorBanner.classList.remove("d-none");

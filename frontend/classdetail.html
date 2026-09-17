@@ -20,10 +20,10 @@
     <div class="collapse navbar-collapse" id="nvNav">
       <ul class="navbar-nav ms-auto">
         <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link active" href="class-listing.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredient-match.html">Ingredient Match</a></li>
+        <li class="nav-item"><a class="nav-link active" href="classlisting.html">Classes</a></li>
+        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
         <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link" href="user-dashboard.html">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
       </ul>
     </div>
   </div>
@@ -35,6 +35,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
 <script>
   const params = new URLSearchParams(window.location.search);
   const classId = params.get("id");
@@ -84,9 +85,25 @@
             <span class="badge text-bg-light">${nvLabel("budget", cls.budget)} budget</span>
             <span class="badge text-bg-light">${nvLabel("taste", cls.taste)}</span>
           </div>
+
+          <h5 class="nv-section-title mb-3">What you'll need</h5>
+          ${cls.ingredients
+            ? nvIngredientChipsHtml(cls.ingredients)
+            : `<p class="text-muted small">Ingredient list isn't wired up on this page yet —
+               the backend doesn't return per-class ingredients from
+               <code>GET /api/classes</code> today, only ingredient
+               <em>match counts</em>. Worth asking Divya to include an
+               <code>ingredients</code> array on the class response.</p>`}
         </div>
 
         <div class="col-lg-4">
+          <div class="nv-card mb-3">
+            ${nvCardArtHtml(cls)}
+            <div class="p-3">
+              <div class="text-muted small">A peek at the dish — helps even if you've
+              never heard of it before!</div>
+            </div>
+          </div>
           <div class="nv-card p-3">
             <button class="btn btn-nv-primary w-100" id="like-btn">Like this class</button>
             <div id="like-status" class="text-muted small mt-2"></div>
@@ -113,7 +130,7 @@
   async function load() {
     if (!classId) {
       document.getElementById("detail-root").innerHTML =
-        `<div class="nv-empty-state">No class id in the URL. Go back to <a href="class-listing.html">Classes</a>.</div>`;
+        `<div class="nv-empty-state">No class id in the URL. Go back to <a href="classlisting.html">Classes</a>.</div>`;
       return;
     }
     try {

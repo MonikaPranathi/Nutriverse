@@ -20,17 +20,21 @@
     <div class="collapse navbar-collapse" id="nvNav">
       <ul class="navbar-nav ms-auto">
         <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link active" href="class-listing.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredient-match.html">Ingredient Match</a></li>
+        <li class="nav-item"><a class="nav-link active" href="classlisting.html">Classes</a></li>
+        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
         <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link" href="user-dashboard.html">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
       </ul>
     </div>
   </div>
 </nav>
 
 <div class="container py-4">
-  <h1 class="mb-4">Browse classes</h1>
+  <div class="nv-hero">
+    <h1>Let's cook something 🍳</h1>
+    <p class="mb-0">Browse bite-sized classes from the community — pick a
+    vibe, a mood, a mealtime, and see what looks good.</p>
+  </div>
 
   <div id="error-banner" class="alert alert-warning d-none"></div>
 
@@ -45,7 +49,7 @@
 
     <main class="col-lg-9">
       <div id="results-count" class="text-muted mb-3"></div>
-      <div id="class-grid" class="row g-4"></div>
+      <div id="class-grid" class="nv-masonry"></div>
       <div id="empty-state" class="nv-empty-state d-none">
         <h5>No classes match those filters</h5>
         <p class="mb-0">Try clearing a filter or two.</p>
@@ -56,6 +60,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
 <script>
   // Real filterable fields per classes.js FILTERABLE_FIELDS
   const FACETS = [
@@ -118,11 +123,12 @@
     empty.classList.add("d-none");
 
     classes.forEach((c) => {
-      const col = document.createElement("div");
-      col.className = "col-md-6 col-xl-4";
-      col.innerHTML = `
+      const item = document.createElement("div");
+      item.className = "nv-masonry-item";
+      item.innerHTML = `
         <a href="class-detail.html?id=${c.id}" class="text-decoration-none">
-          <div class="nv-card h-100">
+          <div class="nv-card">
+            ${nvCardArtHtml(c)}
             <div class="p-3">
               <h6 class="nv-heading mb-1">${c.title}</h6>
               <div class="text-muted small mb-2">${nvLabel("meal_time", c.meal_time)} &middot; ${nvLabel("time_needed", c.time_needed)}</div>
@@ -134,7 +140,7 @@
             </div>
           </div>
         </a>`;
-      grid.appendChild(col);
+      grid.appendChild(item);
     });
   }
 

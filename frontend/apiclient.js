@@ -36,6 +36,14 @@
     4. server.js doesn't serve the uploads/ folder statically
        (no app.use('/uploads', express.static(...))), so native
        video uploads won't actually play until that's added.
+    5. No dish-photo field. The classes table has no image_url column,
+       and GET /api/classes doesn't return ingredient names (only
+       match-ingredients touches ingredients, and only as counts).
+       nvUploadClass() below already sends an optional "image" file
+       so the frontend is ready the moment the backend adds an
+       image_url column + returns it — until then, cards fall back to
+       a cute category-based placeholder graphic (see ingredient-icons.js
+       nvCardArtHtml()) instead of a real photo.
 */
 
 const API_BASE = "http://localhost:5000/api";
@@ -169,10 +177,20 @@ function nvLikeClass(userId, classId) {
 // POST /api/upload-class — multipart/form-data (multer expects field
 // name "video" for the file). formFields is a plain object of the
 // text fields; videoFile is an optional File.
-function nvUploadClass(formFields, videoFile) {
+//
+// imageFile (a dish photo) is sent as a field named "image" so the
+// upload is future-proofed for when the backend adds image support
+// (see gap #5 above). The current multer setup on /api/upload-class
+// only declares upload.single('video'), so an extra "image" field in
+// the same multipart body will likely be silently ignored (or, if
+// multer is strict there, could error) until the backend adds
+// upload.fields([{ name: 'video' }, { name: 'image' }]) — flag this
+// with the backend before relying on it.
+function nvUploadClass(formFields, videoFile, imageFile) {
   const fd = new FormData();
   Object.entries(formFields).forEach(([k, v]) => fd.append(k, v));
   if (videoFile) fd.append("video", videoFile);
+  if (imageFile) fd.append("image", imageFile);
   return nvApi("/upload-class", { method: "POST", body: fd });
 }
 

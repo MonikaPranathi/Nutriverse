@@ -39,6 +39,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
 <script>
   let currentStatus = "pending";
 
@@ -58,7 +59,9 @@
       col.className = "col-md-6 col-lg-4";
       const badgeClass = { pending: "nv-badge-pending", approved: "nv-badge-approved", rejected: "nv-badge-rejected" }[currentStatus];
       col.innerHTML = `
-        <div class="nv-card p-3 h-100 d-flex flex-column">
+        <div class="nv-card h-100 d-flex flex-column">
+          ${nvCardArtHtml(c)}
+          <div class="p-3 d-flex flex-column flex-grow-1">
           <span class="badge ${badgeClass} align-self-start mb-2">${currentStatus}</span>
           <h6 class="nv-heading">${c.title}</h6>
           <div class="text-muted small mb-1">${nvLabel("category", c.category)} &middot; ${nvLabel("meal_time", c.meal_time)}</div>
@@ -66,6 +69,7 @@
           <div class="mt-auto d-flex gap-2">
             <button class="btn btn-sm btn-nv-primary flex-fill" data-action="approve" data-id="${c.id}" ${currentStatus !== "pending" ? "disabled" : ""}>Approve</button>
             <button class="btn btn-sm btn-nv-danger flex-fill" data-action="reject" data-id="${c.id}" ${currentStatus !== "pending" ? "disabled" : ""}>Reject</button>
+          </div>
           </div>
         </div>`;
       list.appendChild(col);
