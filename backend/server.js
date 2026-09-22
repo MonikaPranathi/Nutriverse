@@ -10,6 +10,8 @@ app.use(express.json());
 app.use('/api', authRoutes);
 
 app.use('/api', require('./routes/classes'));
+app.use('/api', require('./routes/admin'));
+app.use('/api', require('./routes/notifications'));
 
 app.get('/', (req, res) => res.send('Nutriverse backend is running'));
 
