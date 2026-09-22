@@ -5,6 +5,36 @@
  * Endpoints:
  *   GET  /api/admin/pending - moderation queue (classes awaiting review)
  *   POST /api/admin/review  - approve or reject a pending class
+ *
+ * Matches Pranathi's actual schema:
+ *   classes(id, title, category, budget, time_needed, taste,
+ *           skill_level, meal_time, video_url, source_type,
+ *           uploader_id, status, created_at)
+ *   users(id, name, email, password, role, created_at)
+ *   notifications(id, user_id, message, related_class_id, is_read, created_at)
+ *
+ * Assumes db.js exports a mysql2/promise pool as `pool`.
+ *
+ * ============================================================
+ * IMPORTANT — read before relying on this for real security
+ * ============================================================
+ * requireAdmin below closes the *functional* gap (there was no
+ * check at all before), but it is NOT cryptographically secure.
+ * auth.js currently has no session/token system — login just
+ * returns { id, name, role } with nothing to prove the caller
+ * actually IS that user on later requests. So this middleware
+ * trusts whatever admin_id the client sends, the same way every
+ * other endpoint in this codebase trusts whatever user_id it's
+ * given. Anyone who knows or guesses an admin's user id can pass
+ * it and get through.
+ *
+ * This is fine for a class project demo, but before this is
+ * anything real: add a session token (or JWT) issued at login in
+ * auth.js, send it in an Authorization header, and have this
+ * middleware verify the token instead of trusting a raw id. That's
+ * a decision for the whole team / Pranathi's auth.js, not something
+ * to bolt on silently here.
+ * ============================================================
  */
 
 const express = require('express');
@@ -16,10 +46,37 @@ function respond(res, success, message, data = null, httpCode = 200) {
     return res.status(httpCode).json({ success, message, data });
 }
 
+// Reads admin_id from the body (POST) or query string (GET), and checks
+// that user's role in the DB. See the big warning above before assuming
+// this is secure against a malicious client.
+async function requireAdmin(req, res, next) {
+    const adminId = parseInt((req.body && req.body.admin_id) || req.query.admin_id, 10);
+
+    if (!adminId) {
+        return respond(res, false, 'admin_id is required.', null, 400);
+    }
+
+    try {
+        const [rows] = await pool.query('SELECT role FROM users WHERE id = ?', [adminId]);
+
+        if (rows.length === 0) {
+            return respond(res, false, 'admin_id does not match any user.', null, 401);
+        }
+        if (rows[0].role !== 'admin') {
+            return respond(res, false, 'This action requires an admin account.', null, 403);
+        }
+
+        next();
+    } catch (err) {
+        console.error(err);
+        return respond(res, false, 'Failed to verify admin access.', null, 500);
+    }
+}
+
 // ---------------------------------------------------------------------
-// GET /api/admin/pending - list classes with status = 'pending'
+// GET /api/admin/pending?admin_id=1 - list classes with status = 'pending'
 // ---------------------------------------------------------------------
-router.get('/admin/pending', async (req, res) => {
+router.get('/admin/pending', requireAdmin, async (req, res) => {
     try {
         const [rows] = await pool.query(
             `SELECT c.id, c.title, c.category, c.budget, c.time_needed, c.taste,
@@ -39,9 +96,10 @@ router.get('/admin/pending', async (req, res) => {
 
 // ---------------------------------------------------------------------
 // POST /api/admin/review
-// Body: { class_id: number, decision: 'approve' | 'reject' }
+// Body: { admin_id, class_id, decision: 'approve' | 'reject' }
+// Notifies the uploader of the outcome.
 // ---------------------------------------------------------------------
-router.post('/admin/review', async (req, res) => {
+router.post('/admin/review', requireAdmin, async (req, res) => {
     const classId = parseInt(req.body.class_id, 10);
     const decision = req.body.decision;
 
