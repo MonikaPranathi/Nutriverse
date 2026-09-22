@@ -11,23 +11,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="index.html">Nutriverse</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nvNav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="classlisting.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
-        <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link active" href="userdashboard.html">Dashboard</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
 
 <div class="container py-4">
   <h1 class="mb-1" id="greeting">My dashboard</h1>
@@ -41,16 +25,18 @@
     <li class="nav-item"><button class="nav-link active" data-pane="notifications">Notifications</button></li>
     <li class="nav-item"><button class="nav-link" data-pane="uploads">My uploads</button></li>
     <li class="nav-item"><button class="nav-link" data-pane="saved">Saved classes</button></li>
+    <li class="nav-item"><button class="nav-link" data-pane="progress">Skill ladder</button></li>
   </ul>
 
   <div id="pane-notifications" class="dash-pane"></div>
   <div id="pane-uploads" class="dash-pane d-none"></div>
   <div id="pane-saved" class="dash-pane d-none"></div>
+  <div id="pane-progress" class="dash-pane d-none"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="apiclient.js"></script>
-<script src="js/ingredient-icons.js"></script>
+<script src="ingredient-icons.js"></script>
 <script>
   const currentUser = nvGetCurrentUser();
 
@@ -88,15 +74,50 @@
       </div>`).join("") + `</div>`;
   }
 
-  function renderSavedPlaceholder() {
-    // The backend only has POST /api/like-class (record a like) — there's
-    // no GET endpoint to list a user's liked/saved classes yet. Ask
-    // Divya/Pranathi for something like GET /api/liked-classes?user_id=.
-    document.getElementById("pane-saved").innerHTML = `
-      <div class="nv-empty-state">
-        Saved classes aren't available yet — the backend can record a like
-        (<code>POST /api/like-class</code>) but there's no endpoint to list
-        them back. This tab will populate once that's added.
+  // Favorites (user_favorites, via social.js) is distinct from likes —
+  // a like is a lightweight signal, a favorite is the user's saved list —
+  // and unlike likes, favorites DO have a GET endpoint, so this tab is
+  // fully wired.
+  function renderSaved(favorites) {
+    const pane = document.getElementById("pane-saved");
+    if (favorites.length === 0) {
+      pane.innerHTML = `<div class="nv-empty-state">Nothing saved yet. Open a class and hit "Save to favorites".</div>`;
+      return;
+    }
+    pane.innerHTML = `<div class="nv-masonry">` + favorites.map((c) => `
+      <div class="nv-masonry-item">
+        <a href="classdetail.html?id=${c.id}" class="text-decoration-none">
+          <div class="nv-card">
+            ${nvCardArtHtml(c)}
+            <div class="p-3">
+              <h6 class="nv-heading mb-1">${c.title}</h6>
+              <div class="text-muted small">${nvLabel("meal_time", c.meal_time)} &middot; ${nvLabel("time_needed", c.time_needed)}</div>
+            </div>
+          </div>
+        </a>
+      </div>`).join("") + `</div>`;
+  }
+
+  function renderSkillLadder(ladder) {
+    const pane = document.getElementById("pane-progress");
+    const LEVELS = ["beginner", "intermediate", "advanced"];
+    pane.innerHTML = `
+      <div class="row g-3 mb-4">
+        <div class="col-4"><div class="nv-stat-card"><div class="num">${ladder.completed_by_level.beginner}</div><div class="label">Beginner completed</div></div></div>
+        <div class="col-4"><div class="nv-stat-card"><div class="num">${ladder.completed_by_level.intermediate}</div><div class="label">Intermediate completed</div></div></div>
+        <div class="col-4"><div class="nv-stat-card"><div class="num">${ladder.completed_by_level.advanced}</div><div class="label">Advanced completed</div></div></div>
+      </div>
+      <div class="nv-card p-3 mb-3">
+        <div class="fw-semibold mb-1">Current level: ${nvLabel("skill_level", ladder.current_level)}</div>
+        ${ladder.next_goal ? `
+          <div class="text-muted small mb-2">${ladder.next_goal.remaining} more ${nvLabel("skill_level", ladder.current_level).toLowerCase()} class${ladder.next_goal.remaining === 1 ? "" : "es"} to unlock ${nvLabel("skill_level", ladder.next_goal.unlocks)}</div>
+          <div class="nv-progress-track"><div class="nv-progress-fill" style="width:${Math.min(100, Math.round((ladder.next_goal.completed / ladder.next_goal.needed) * 100))}%"></div></div>
+        ` : `<div class="text-muted small">You've unlocked every level 🎉</div>`}
+      </div>
+      <div class="d-flex gap-3">
+        ${LEVELS.map((lvl) => `
+          <span class="badge ${ladder.unlocked[lvl] ? "nv-badge-approved" : "text-bg-light"}">${ladder.unlocked[lvl] ? "✓ " : ""}${nvLabel("skill_level", lvl)}</span>
+        `).join("")}
       </div>`;
   }
 
@@ -110,11 +131,12 @@
   });
 
   async function load() {
+    nvRenderNavbar("dashboard");
     if (!currentUser) {
       document.getElementById("login-warning").classList.remove("d-none");
       renderNotifications([]);
       renderUploads([]);
-      renderSavedPlaceholder();
+      renderSaved([]);
       return;
     }
 
@@ -146,7 +168,21 @@
         `<div class="alert alert-warning">Couldn't load uploads: ${err.message}</div>`;
     }
 
-    renderSavedPlaceholder();
+    try {
+      const favorites = await nvGetFavorites(currentUser.id);
+      renderSaved(favorites);
+    } catch (err) {
+      document.getElementById("pane-saved").innerHTML =
+        `<div class="alert alert-warning">Couldn't load saved classes: ${err.message}</div>`;
+    }
+
+    try {
+      const ladder = await nvGetSkillLadder(currentUser.id);
+      renderSkillLadder(ladder);
+    } catch (err) {
+      document.getElementById("pane-progress").innerHTML =
+        `<div class="alert alert-warning">Couldn't load skill ladder: ${err.message}</div>`;
+    }
   }
 
   load();

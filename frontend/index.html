@@ -11,24 +11,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="index.html">Nutriverse</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nvNav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link active" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="classlisting.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
-        <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
-        <li class="nav-item" id="nav-auth"><a class="nav-link" href="login.html">Log In</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
 
 <div class="container py-4">
   <div class="nv-hero" id="hero">
@@ -38,6 +21,8 @@
   </div>
 
   <div id="error-banner" class="alert alert-warning d-none"></div>
+
+  <div id="tip-banner"></div>
 
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h4 class="nv-heading mb-0" id="feed-heading">Latest classes</h4>
@@ -65,12 +50,11 @@
   if (!user) {
     window.location.href = "login.html";
   } else {
+    nvRenderNavbar("home");
     const mealTime = nvGetMealTime();
     const MEAL_LABELS = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", night: "Night" };
 
     function setupHeroAndNav() {
-      document.getElementById("nav-auth").innerHTML = `<a class="nav-link" href="#" id="logout-link">Log out</a>`;
-
       if (mealTime) {
         document.getElementById("hero-title").textContent = `Good ${MEAL_LABELS[mealTime].toLowerCase()}, ${user.name} 🍳`;
         document.getElementById("hero-subtitle").textContent =
@@ -138,14 +122,20 @@
     setupHeroAndNav();
     loadFeed();
 
-    document.addEventListener("click", (e) => {
-      if (e.target && e.target.id === "logout-link") {
-        e.preventDefault();
-        sessionStorage.removeItem("nv_user");
-        sessionStorage.removeItem("nv_meal_time");
-        window.location.href = "login.html";
-      }
-    });
+    // Tip of the day — small taste of tips.js's rotating tip on the
+    // home feed, with a link through to the full tips page.
+    nvGetTipOfDay().then((tip) => {
+      if (!tip) return;
+      document.getElementById("tip-banner").innerHTML = `
+        <div class="nv-tip-banner">
+          <span class="icon">💡</span>
+          <div>
+            <span class="nv-tip-type-badge">${nvLabel("tip_type", tip.tip_type) || tip.tip_type}</span>
+            <div>${tip.tip_text}</div>
+            <a href="tips.html" class="small">More tips &rarr;</a>
+          </div>
+        </div>`;
+    }).catch(() => {});
   }
 </script>
 </body>

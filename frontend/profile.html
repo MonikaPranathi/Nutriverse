@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
+
+<div class="container py-4" style="max-width: 760px;">
+  <h1 class="mb-1" id="page-heading">My profile</h1>
+  <p class="text-muted mb-4">Your info, health basics, and food preferences — used to personalize what you see.</p>
+
+  <div id="login-warning" class="alert alert-warning d-none">
+    <a href="login.html">Log in</a> to view your profile.
+  </div>
+
+  <div id="profile-root" class="d-none">
+    <div class="nv-subtabs">
+      <button class="active" data-tab="basics">Basics</button>
+      <button data-tab="diet">Dietary</button>
+      <button data-tab="allergies">Allergies</button>
+      <button data-tab="cuisines">Cuisines</button>
+      <button data-tab="metrics">Body metrics</button>
+    </div>
+
+    <div id="banner" class="alert d-none"></div>
+
+    <div id="pane-basics" class="profile-pane"></div>
+    <div id="pane-diet" class="profile-pane d-none"></div>
+    <div id="pane-allergies" class="profile-pane d-none"></div>
+    <div id="pane-cuisines" class="profile-pane d-none"></div>
+    <div id="pane-metrics" class="profile-pane d-none"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  nvRenderNavbar("profile");
+  const user = nvGetCurrentUser();
+  if (!user) {
+    document.getElementById("login-warning").classList.remove("d-none");
+  } else {
+    document.getElementById("profile-root").classList.remove("d-none");
+    document.getElementById("page-heading").textContent = `Hi, ${user.name}`;
+  }
+
+  function showBanner(message, type) {
+    const b = document.getElementById("banner");
+    b.textContent = message;
+    b.className = `alert alert-${type}`;
+  }
+
+  document.querySelectorAll(".nv-subtabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nv-subtabs button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".profile-pane").forEach((p) => p.classList.add("d-none"));
+      document.getElementById(`pane-${btn.dataset.tab}`).classList.remove("d-none");
+    });
+  });
+
+  // ---- Basics ----
+  function fillSelect(el, field, current) {
+    el.innerHTML = `<option value="">Not set</option>` + NV_ENUMS[field].map((o) =>
+      `<option value="${o.value}" ${o.value === current ? "selected" : ""}>${o.label}</option>`
+    ).join("");
+  }
+
+  async function loadBasics() {
+    const pane = document.getElementById("pane-basics");
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const profile = await nvGetProfile(user.id);
+    pane.innerHTML = `
+      <div class="nv-form-section">
+        <h5>Basic info</h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Age</label>
+            <input type="number" min="0" max="120" class="form-control" id="p-age" value="${profile.age ?? ""}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Gender</label>
+            <select class="form-select" id="p-gender"></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Spice tolerance</label>
+            <select class="form-select" id="p-spice_tolerance"></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Height (cm)</label>
+            <input type="number" step="0.1" class="form-control" id="p-height_cm" value="${profile.height_cm ?? ""}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Weight (kg)</label>
+            <input type="number" step="0.1" class="form-control" id="p-weight_kg" value="${profile.weight_kg ?? ""}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Activity level</label>
+            <select class="form-select" id="p-activity_level"></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Goal</label>
+            <select class="form-select" id="p-goal"></select>
+          </div>
+        </div>
+        <button class="btn btn-nv-primary mt-3" id="save-basics">Save changes</button>
+      </div>`;
+
+    fillSelect(document.getElementById("p-gender"), "gender", profile.gender);
+    fillSelect(document.getElementById("p-spice_tolerance"), "spice_tolerance", profile.spice_tolerance);
+    fillSelect(document.getElementById("p-activity_level"), "activity_level", profile.activity_level);
+    fillSelect(document.getElementById("p-goal"), "goal", profile.goal);
+
+    document.getElementById("save-basics").addEventListener("click", async () => {
+      const fields = {};
+      ["age", "gender", "height_cm", "weight_kg", "activity_level", "goal", "spice_tolerance"].forEach((f) => {
+        const val = document.getElementById(`p-${f}`).value;
+        if (val !== "") fields[f] = val;
+      });
+      try {
+        await nvUpdateProfile(user.id, fields);
+        showBanner("Profile updated.", "success");
+      } catch (err) {
+        showBanner(err.message, "warning");
+      }
+    });
+  }
+
+  // ---- Dietary preferences + allergies (share the same dietary-options lookup) ----
+  async function loadDiet() {
+    const pane = document.getElementById("pane-diet");
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const [options, mine] = await Promise.all([nvGetDietaryOptions(), nvGetDietaryPreferences(user.id)]);
+    const mineNames = new Set(mine.map((p) => p.name));
+    pane.innerHTML = `
+      <div class="nv-form-section">
+        <h5>Dietary preferences</h5>
+        <div class="nv-pill-picker mb-3" id="diet-pills">
+          ${options.preferences.map((p) => `<span class="nv-chip ${mineNames.has(p.name) ? "selected" : ""}" data-name="${p.name}">${p.name}</span>`).join("")}
+        </div>
+        <button class="btn btn-nv-primary" id="save-diet">Save preferences</button>
+      </div>`;
+    document.querySelectorAll("#diet-pills .nv-chip").forEach((chip) => {
+      chip.addEventListener("click", () => chip.classList.toggle("selected"));
+    });
+    document.getElementById("save-diet").addEventListener("click", async () => {
+      const selected = [...document.querySelectorAll("#diet-pills .nv-chip.selected")].map((c) => c.dataset.name);
+      try {
+        await nvSetDietaryPreferences(user.id, selected);
+        showBanner("Dietary preferences saved.", "success");
+      } catch (err) {
+        showBanner(err.message, "warning");
+      }
+    });
+  }
+
+  async function loadAllergies() {
+    const pane = document.getElementById("pane-allergies");
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const [options, mine] = await Promise.all([nvGetDietaryOptions(), nvGetAllergies(user.id)]);
+    const mineNames = new Set(mine.map((a) => a.name));
+    pane.innerHTML = `
+      <div class="nv-form-section">
+        <h5>Allergies</h5>
+        <p class="text-muted small">Classes containing these are automatically filtered out of your browse results.</p>
+        <div class="nv-pill-picker mb-3" id="allergy-pills">
+          ${options.allergens.map((a) => `<span class="nv-chip ${mineNames.has(a.name) ? "selected" : ""}" data-name="${a.name}">${a.name}</span>`).join("")}
+        </div>
+        <button class="btn btn-nv-primary" id="save-allergies">Save allergies</button>
+      </div>`;
+    document.querySelectorAll("#allergy-pills .nv-chip").forEach((chip) => {
+      chip.addEventListener("click", () => chip.classList.toggle("selected"));
+    });
+    document.getElementById("save-allergies").addEventListener("click", async () => {
+      const selected = [...document.querySelectorAll("#allergy-pills .nv-chip.selected")].map((c) => c.dataset.name);
+      try {
+        await nvSetAllergies(user.id, selected);
+        showBanner("Allergies saved.", "success");
+      } catch (err) {
+        showBanner(err.message, "warning");
+      }
+    });
+  }
+
+  async function loadCuisines() {
+    const pane = document.getElementById("pane-cuisines");
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const [all, mine] = await Promise.all([nvGetCuisines(), nvGetCuisinePreferences(user.id)]);
+    const mineNames = new Set(mine.map((c) => c.name));
+    pane.innerHTML = `
+      <div class="nv-form-section">
+        <h5>Favorite cuisines</h5>
+        ${all.length === 0 ? `<p class="text-muted small">No cuisines tagged in the system yet.</p>` : ""}
+        <div class="nv-pill-picker mb-3" id="cuisine-pills">
+          ${all.map((c) => `<span class="nv-chip ${mineNames.has(c.name) ? "selected" : ""}" data-name="${c.name}">${c.name}</span>`).join("")}
+        </div>
+        <button class="btn btn-nv-primary" id="save-cuisines">Save cuisines</button>
+      </div>`;
+    document.querySelectorAll("#cuisine-pills .nv-chip").forEach((chip) => {
+      chip.addEventListener("click", () => chip.classList.toggle("selected"));
+    });
+    document.getElementById("save-cuisines").addEventListener("click", async () => {
+      const selected = [...document.querySelectorAll("#cuisine-pills .nv-chip.selected")].map((c) => c.dataset.name);
+      try {
+        await nvSetCuisinePreferences(user.id, selected);
+        showBanner("Cuisine preferences saved.", "success");
+      } catch (err) {
+        showBanner(err.message, "warning");
+      }
+    });
+  }
+
+  // ---- Body metrics ----
+  async function loadMetrics() {
+    const pane = document.getElementById("pane-metrics");
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const history = await nvGetBodyMetrics(user.id);
+    const latest = history[history.length - 1];
+    pane.innerHTML = `
+      <div class="row g-3 mb-3">
+        <div class="col-4"><div class="nv-stat-card"><div class="num">${latest ? latest.weight_kg : "–"}</div><div class="label">Latest weight (kg)</div></div></div>
+        <div class="col-4"><div class="nv-stat-card"><div class="num">${latest && latest.bmi ? latest.bmi : "–"}</div><div class="label">BMI</div></div></div>
+        <div class="col-4"><div class="nv-stat-card"><div class="num">${history.length}</div><div class="label">Entries logged</div></div></div>
+      </div>
+      <div class="nv-form-section">
+        <h5>Log a new entry</h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Weight (kg)</label>
+            <input type="number" step="0.1" class="form-control" id="m-weight">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Height (cm, optional)</label>
+            <input type="number" step="0.1" class="form-control" id="m-height">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Body fat % (optional)</label>
+            <input type="number" step="0.1" class="form-control" id="m-fat">
+          </div>
+        </div>
+        <button class="btn btn-nv-primary mt-3" id="log-metric">Log entry</button>
+      </div>
+      <div class="nv-card">
+        ${history.length === 0
+          ? `<div class="p-3 text-muted small">No entries yet.</div>`
+          : [...history].reverse().map((h) => `
+            <div class="p-3 border-bottom d-flex justify-content-between">
+              <span>${h.weight_kg} kg${h.bmi ? ` &middot; BMI ${h.bmi}` : ""}${h.body_fat_pct ? ` &middot; ${h.body_fat_pct}% body fat` : ""}</span>
+              <span class="text-muted small">${new Date(h.recorded_at).toLocaleDateString()}</span>
+            </div>`).join("")}
+      </div>`;
+
+    document.getElementById("log-metric").addEventListener("click", async () => {
+      const weight = document.getElementById("m-weight").value;
+      if (!weight) { showBanner("Weight is required to log an entry.", "warning"); return; }
+      const fields = { weight_kg: weight };
+      const height = document.getElementById("m-height").value;
+      const fat = document.getElementById("m-fat").value;
+      if (height) fields.height_cm = height;
+      if (fat) fields.body_fat_pct = fat;
+      try {
+        await nvLogBodyMetrics(user.id, fields);
+        showBanner("Logged.", "success");
+        loadMetrics();
+      } catch (err) {
+        showBanner(err.message, "warning");
+      }
+    });
+  }
+
+  if (user) {
+    loadBasics().catch((err) => showBanner(err.message, "warning"));
+    loadDiet().catch((err) => showBanner(err.message, "warning"));
+    loadAllergies().catch((err) => showBanner(err.message, "warning"));
+    loadCuisines().catch((err) => showBanner(err.message, "warning"));
+    loadMetrics().catch((err) => showBanner(err.message, "warning"));
+  }
+</script>
+</body>
+</html>

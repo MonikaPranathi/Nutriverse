@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cookbooks — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
+
+<div class="container py-4">
+  <h1 class="mb-1">Cookbooks &amp; collections</h1>
+  <p class="text-muted mb-4">Your own saved sets, plus curated themes and what's in season.</p>
+
+  <div id="banner" class="alert d-none"></div>
+
+  <div class="nv-subtabs">
+    <button class="active" data-tab="mine">My cookbooks</button>
+    <button data-tab="curated">Curated collections</button>
+    <button data-tab="seasonal">In season</button>
+  </div>
+
+  <div id="pane-mine" class="cb-pane"></div>
+  <div id="pane-curated" class="cb-pane d-none"></div>
+  <div id="pane-seasonal" class="cb-pane d-none"></div>
+
+  <!-- Detail view for a single cookbook/collection -->
+  <div id="pane-detail" class="d-none">
+    <button class="btn btn-sm btn-outline-secondary mb-3" id="back-btn">&larr; Back</button>
+    <h4 class="nv-heading mb-1" id="detail-title"></h4>
+    <p class="text-muted mb-3" id="detail-desc"></p>
+    <div id="detail-classes" class="nv-masonry"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  nvRenderNavbar("cookbooks");
+  const user = nvGetCurrentUser();
+
+  function showBanner(message, type) {
+    const b = document.getElementById("banner");
+    b.textContent = message;
+    b.className = `alert alert-${type}`;
+  }
+
+  document.querySelectorAll(".nv-subtabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nv-subtabs button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".cb-pane").forEach((p) => p.classList.add("d-none"));
+      document.getElementById("pane-detail").classList.add("d-none");
+      document.getElementById(`pane-${btn.dataset.tab}`).classList.remove("d-none");
+    });
+  });
+
+  function showDetail(title, desc, classes) {
+    document.querySelectorAll(".cb-pane").forEach((p) => p.classList.add("d-none"));
+    document.getElementById("pane-detail").classList.remove("d-none");
+    document.getElementById("detail-title").textContent = title;
+    document.getElementById("detail-desc").textContent = desc || "";
+    const grid = document.getElementById("detail-classes");
+    grid.innerHTML = classes.length === 0
+      ? `<p class="text-muted">Nothing in here yet.</p>`
+      : classes.map((c) => `
+        <div class="nv-masonry-item">
+          <a href="classdetail.html?id=${c.id}" class="text-decoration-none">
+            <div class="nv-card">
+              ${nvCardArtHtml(c)}
+              <div class="p-3">
+                <h6 class="nv-heading mb-1">${c.title}</h6>
+                <div class="text-muted small">${nvLabel("meal_time", c.meal_time)} &middot; ${nvLabel("category", c.category)}</div>
+              </div>
+            </div>
+          </a>
+        </div>`).join("");
+  }
+  document.getElementById("back-btn").addEventListener("click", () => {
+    document.getElementById("pane-detail").classList.add("d-none");
+    document.querySelector(".nv-subtabs button.active").click();
+  });
+
+  // ---- My cookbooks ----
+  async function loadMine() {
+    const pane = document.getElementById("pane-mine");
+    if (!user) {
+      pane.innerHTML = `<div class="nv-empty-state"><a href="login.html">Log in</a> to create your own cookbooks.</div>`;
+      return;
+    }
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const cookbooks = await nvGetCookbooks(user.id);
+    pane.innerHTML = `
+      <div class="nv-form-section mb-4">
+        <h5>New cookbook</h5>
+        <div class="row g-2">
+          <div class="col-md-4"><input class="form-control" id="cb-name" placeholder="Name"></div>
+          <div class="col-md-6"><input class="form-control" id="cb-desc" placeholder="Description (optional)"></div>
+          <div class="col-md-2"><button class="btn btn-nv-primary w-100" id="cb-create">Create</button></div>
+        </div>
+      </div>
+      <div class="row g-3" id="cb-grid">
+        ${cookbooks.map((cb) => `
+          <div class="col-md-4">
+            <div class="nv-tile" data-id="${cb.id}" data-name="${cb.name.replace(/"/g, '&quot;')}" data-desc="${(cb.description || "").replace(/"/g, '&quot;')}">
+              <h6 class="nv-heading mb-1">${cb.name}</h6>
+              <div class="text-muted small mb-2">${cb.description || ""}</div>
+              <div class="count">${cb.class_count} class${cb.class_count === 1 ? "" : "es"}</div>
+            </div>
+          </div>`).join("")}
+      </div>
+      ${cookbooks.length === 0 ? `<p class="text-muted mt-3">No cookbooks yet — make your first one above.</p>` : ""}`;
+
+    document.getElementById("cb-create").addEventListener("click", async () => {
+      const name = document.getElementById("cb-name").value.trim();
+      if (!name) { showBanner("Give your cookbook a name.", "warning"); return; }
+      try {
+        await nvCreateCookbook(user.id, name, document.getElementById("cb-desc").value.trim());
+        loadMine();
+      } catch (err) {
+        showBanner(err.message, "warning");
+      }
+    });
+
+    document.querySelectorAll("#cb-grid .nv-tile").forEach((tile) => {
+      tile.addEventListener("click", async () => {
+        const result = await nvGetCookbookClasses(tile.dataset.id);
+        showDetail(tile.dataset.name, tile.dataset.desc, result.classes);
+      });
+    });
+  }
+
+  // ---- Curated collections ----
+  async function loadCurated() {
+    const pane = document.getElementById("pane-curated");
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const collections = await nvGetCollections();
+    pane.innerHTML = collections.length === 0
+      ? `<p class="text-muted">No curated collections yet.</p>`
+      : `<div class="row g-3">` + collections.map((c) => `
+          <div class="col-md-4">
+            <div class="nv-tile" data-id="${c.id}" data-name="${c.name.replace(/"/g, '&quot;')}" data-desc="${(c.description || "").replace(/"/g, '&quot;')}">
+              <h6 class="nv-heading mb-1">${c.name}</h6>
+              <div class="text-muted small mb-2">${c.description || ""}</div>
+              <div class="count">${c.class_count} class${c.class_count === 1 ? "" : "es"}</div>
+            </div>
+          </div>`).join("") + `</div>`;
+
+    document.querySelectorAll("#pane-curated .nv-tile").forEach((tile) => {
+      tile.addEventListener("click", async () => {
+        const result = await nvGetCollectionClasses(tile.dataset.id);
+        showDetail(tile.dataset.name, tile.dataset.desc, result.classes);
+      });
+    });
+  }
+
+  // ---- Seasonal ingredients ----
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  async function loadSeasonal(month) {
+    const pane = document.getElementById("pane-seasonal");
+    const m = month || (new Date().getMonth() + 1);
+    pane.innerHTML = `<div class="text-muted">Loading…</div>`;
+    const result = await nvGetSeasonalIngredients(m);
+    pane.innerHTML = `
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <select class="form-select form-select-sm" style="width:auto;" id="season-month">
+          ${MONTH_NAMES.map((name, i) => `<option value="${i + 1}" ${i + 1 === m ? "selected" : ""}>${name}</option>`).join("")}
+        </select>
+      </div>
+      ${result.ingredients.length === 0
+        ? `<p class="text-muted">Nothing tagged as in-season for this month yet.</p>`
+        : `<div class="nv-pill-picker">${result.ingredients.map((i) => `<span class="nv-chip">${nvIngredientIcon(i.name)} ${i.name}</span>`).join("")}</div>`}`;
+    document.getElementById("season-month").addEventListener("change", (e) => loadSeasonal(parseInt(e.target.value, 10)));
+  }
+
+  loadMine().catch((err) => showBanner(err.message, "warning"));
+  loadCurated().catch((err) => showBanner(err.message, "warning"));
+  loadSeasonal().catch((err) => showBanner(err.message, "warning"));
+</script>
+</body>
+</html>
