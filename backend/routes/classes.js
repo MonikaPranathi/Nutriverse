@@ -199,6 +199,8 @@ router.post('/add-ingredient', async (req, res) => {
 
 // ---------------------------------------------------------------------
 // Multer setup — only used when source_type = 'native'
+// Accepts two fields: "video" (required when native) and "image"
+// (optional dish photo — not persisted yet, see upload handler note).
 // ---------------------------------------------------------------------
 const uploadDir = path.join(__dirname, '..', 'uploads', 'classes');
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -218,7 +220,9 @@ const upload = multer({
     storage,
     limits: { fileSize: MAX_BYTES },
     fileFilter: (req, file, cb) => {
-        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+        // Only enforce the video mime-type check on the "video" field.
+        // The "image" field (dish photo) is accepted as-is for now.
+        if (file.fieldname === 'video' && !ALLOWED_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('Unsupported video format. Use mp4, mov, or webm.'));
         }
         cb(null, true);
@@ -227,9 +231,17 @@ const upload = multer({
 
 // ---------------------------------------------------------------------
 // POST /api/upload-class
+// Accepts multipart/form-data with up to two files: "video" and "image".
+// NOTE: "image" (dish photo) is accepted here so the request doesn't
+// fail, but it is not yet saved to the database or disk long-term —
+// the classes table has no image_url column yet. Add that column and
+// persist req.files.image[0] once that's ready.
 // ---------------------------------------------------------------------
 router.post('/upload-class', (req, res, next) => {
-    upload.single('video')(req, res, (err) => {
+    upload.fields([
+        { name: 'video', maxCount: 1 },
+        { name: 'image', maxCount: 1 },
+    ])(req, res, (err) => {
         if (err) {
             return respond(res, false, err.message, null, 400);
         }
@@ -250,17 +262,18 @@ router.post('/upload-class', (req, res, next) => {
 
     const uploaderId = parseInt(req.body.uploader_id, 10);
     const cleanTitle = (title || '').trim();
+    const videoFile = req.files?.video?.[0];
 
     if (!uploaderId || !cleanTitle) {
-        if (req.file) fs.unlink(req.file.path, () => {});
+        if (videoFile) fs.unlink(videoFile.path, () => {});
         return respond(res, false, 'uploader_id and title are required.', null, 400);
     }
     if (!VALID_CATEGORIES.includes(category)) {
-        if (req.file) fs.unlink(req.file.path, () => {});
+        if (videoFile) fs.unlink(videoFile.path, () => {});
         return respond(res, false, `category must be one of: ${VALID_CATEGORIES.join(', ')}`, null, 400);
     }
     if (!VALID_SOURCE_TYPES.includes(sourceType)) {
-        if (req.file) fs.unlink(req.file.path, () => {});
+        if (videoFile) fs.unlink(videoFile.path, () => {});
         return respond(res, false, `source_type must be one of: ${VALID_SOURCE_TYPES.join(', ')}`, null, 400);
     }
     if (budget && !VALID_BUDGETS.includes(budget)) {
@@ -281,14 +294,14 @@ router.post('/upload-class', (req, res, next) => {
 
     let videoUrl;
     if (sourceType === 'native') {
-        if (!req.file) {
+        if (!videoFile) {
             return respond(res, false, 'A video file is required when source_type is "native".', null, 400);
         }
-        videoUrl = path.join('uploads', 'classes', req.file.filename).replace(/\\/g, '/');
+        videoUrl = path.join('uploads', 'classes', videoFile.filename).replace(/\\/g, '/');
     } else {
         const providedUrl = (req.body.video_url || '').trim();
         if (!providedUrl) {
-            if (req.file) fs.unlink(req.file.path, () => {});
+            if (videoFile) fs.unlink(videoFile.path, () => {});
             return respond(res, false, 'video_url is required when source_type is "youtube" or "external".', null, 400);
         }
         videoUrl = providedUrl;
@@ -341,7 +354,7 @@ router.post('/upload-class', (req, res, next) => {
         return respond(res, true, 'Class submitted and pending review.', { class_id: classId }, 201);
     } catch (err) {
         await conn.rollback();
-        if (req.file) fs.unlink(req.file.path, () => {});
+        if (videoFile) fs.unlink(videoFile.path, () => {});
         console.error(err);
         return respond(res, false, 'Upload failed while saving to the database.', null, 500);
     } finally {
