@@ -1,4 +1,5 @@
 -- Nutriverse database schema
+USE nutriverse;
 
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -17,7 +18,7 @@ CREATE TABLE classes (
   time_needed ENUM('quick','medium','long') DEFAULT 'quick',
   taste ENUM('spicy','sweet','neutral') DEFAULT 'neutral',
   skill_level ENUM('beginner','intermediate','advanced') DEFAULT 'beginner',
-  meal_time ENUM('morning','afternoon','evening','night') DEFAULT 'morning',
+  meal_time ENUM('morning','afternoon','evening','night','snacks') DEFAULT 'morning',
   video_url VARCHAR(500),
   source_type ENUM('native','youtube','external') DEFAULT 'youtube',
   uploader_id INT,

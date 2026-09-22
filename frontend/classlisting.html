@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse Classes — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">Nutriverse</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nvNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link active" href="classlisting.html">Classes</a></li>
+        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
+        <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
+        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <div class="nv-hero">
+    <h1>Let's cook something 🍳</h1>
+    <p class="mb-0">Browse bite-sized classes from the community — pick a
+    vibe, a mood, a mealtime, and see what looks good.</p>
+  </div>
+
+  <div id="error-banner" class="alert alert-warning d-none"></div>
+
+  <div class="row">
+    <aside class="col-lg-3 mb-4">
+      <div class="nv-card p-3">
+        <h5 class="nv-heading mb-3">Filters</h5>
+        <div id="filters-root"></div>
+        <button id="clear-filters" class="btn btn-sm btn-outline-secondary w-100 mt-2">Clear all</button>
+      </div>
+    </aside>
+
+    <main class="col-lg-9">
+      <div id="results-count" class="text-muted mb-3"></div>
+      <div id="class-grid" class="nv-masonry"></div>
+      <div id="empty-state" class="nv-empty-state d-none">
+        <h5>No classes match those filters</h5>
+        <p class="mb-0">Try clearing a filter or two.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  // Real filterable fields per classes.js FILTERABLE_FIELDS
+  const FACETS = [
+    { field: "category", label: "Category" },
+    { field: "meal_time", label: "Meal time" },
+    { field: "skill_level", label: "Skill level" },
+    { field: "budget", label: "Budget" },
+    { field: "time_needed", label: "Time needed" },
+    { field: "taste", label: "Taste" },
+  ];
+
+  const activeFilters = {};
+
+  function buildFilterUI() {
+    const root = document.getElementById("filters-root");
+    root.innerHTML = "";
+    FACETS.forEach(({ field, label }) => {
+      const block = document.createElement("div");
+      block.className = "mb-3";
+      block.innerHTML = `<div class="fw-semibold mb-1">${label}</div>
+        <div class="d-flex flex-wrap gap-2" data-facet="${field}"></div>`;
+      root.appendChild(block);
+
+      const chipRow = block.querySelector(`[data-facet="${field}"]`);
+      NV_ENUMS[field].forEach(({ value, label: optLabel }) => {
+        const chip = document.createElement("span");
+        chip.className = "nv-chip";
+        chip.textContent = optLabel;
+        chip.dataset.value = value;
+        chip.addEventListener("click", () => {
+          activeFilters[field] = activeFilters[field] === value ? null : value;
+          renderChipState();
+          loadClasses();
+        });
+        chipRow.appendChild(chip);
+      });
+    });
+  }
+
+  function renderChipState() {
+    FACETS.forEach(({ field }) => {
+      document.querySelectorAll(`[data-facet="${field}"] .nv-chip`).forEach((chip) => {
+        chip.classList.toggle("selected", chip.dataset.value === activeFilters[field]);
+      });
+    });
+  }
+
+  function renderResults(classes) {
+    document.getElementById("results-count").textContent =
+      `${classes.length} class${classes.length === 1 ? "" : "es"} found`;
+
+    const grid = document.getElementById("class-grid");
+    const empty = document.getElementById("empty-state");
+    grid.innerHTML = "";
+
+    if (classes.length === 0) {
+      empty.classList.remove("d-none");
+      return;
+    }
+    empty.classList.add("d-none");
+
+    classes.forEach((c) => {
+      const item = document.createElement("div");
+      item.className = "nv-masonry-item";
+      item.innerHTML = `
+        <a href="class-detail.html?id=${c.id}" class="text-decoration-none">
+          <div class="nv-card">
+            ${nvCardArtHtml(c)}
+            <div class="p-3">
+              <h6 class="nv-heading mb-1">${c.title}</h6>
+              <div class="text-muted small mb-2">${nvLabel("meal_time", c.meal_time)} &middot; ${nvLabel("time_needed", c.time_needed)}</div>
+              <div class="d-flex flex-wrap gap-1">
+                <span class="badge text-bg-light">${nvLabel("category", c.category)}</span>
+                <span class="badge text-bg-light">${nvLabel("skill_level", c.skill_level)}</span>
+                <span class="badge text-bg-light">${nvLabel("taste", c.taste)}</span>
+              </div>
+            </div>
+          </div>
+        </a>`;
+      grid.appendChild(item);
+    });
+  }
+
+  async function loadClasses() {
+    try {
+      document.getElementById("error-banner").classList.add("d-none");
+      const classes = await nvGetClasses({ status: "approved", ...activeFilters });
+      renderResults(classes);
+    } catch (err) {
+      const banner = document.getElementById("error-banner");
+      banner.textContent = `Couldn't load classes from the backend: ${err.message}. Is the server running on ${API_BASE}?`;
+      banner.classList.remove("d-none");
+      renderResults([]);
+    }
+  }
+
+  document.getElementById("clear-filters").addEventListener("click", () => {
+    FACETS.forEach(({ field }) => (activeFilters[field] = null));
+    renderChipState();
+    loadClasses();
+  });
+
+  buildFilterUI();
+  loadClasses();
+</script>
+</body>
+</html>

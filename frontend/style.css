@@ -1,0 +1,195 @@
+/* Nutriverse — Pinterest-style redesign
+   Cute, warm, food-forward. Background is a hand-drawn line-icon
+   pattern (spatula, whisk, chef's hat, pot, herb sprig, rolling pin)
+   tiled at low opacity — pure SVG shapes, not emoji, so it renders
+   identically in every browser. */
+
+:root {
+  --bg: #FFF8EE;
+  --bg-pattern-tile: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiB2aWV3Qm94PSIwIDAgNDAwIDQwMCI+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQwLDQ1KSByb3RhdGUoLTE4KSBzY2FsZSgxLjApIiBzdHJva2U9IiMyRjRBMzgiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIG9wYWNpdHk9IjAuMjAiIGNvbG9yPSIjMkY0QTM4Ij4KPGc+CiAgPHBhdGggZD0iTS0xMCwtMjggaDIwIGEyLDIgMCAwIDEgMiwyIHY4IGExMiw3IDAgMCAxIC0xMiw3IGgwIGExMiw3IDAgMCAxIC0xMiwtNyB2LTggYTIsMiAwIDAgMSAyLC0yIHoiLz4KICA8bGluZSB4MT0iLTYiIHkxPSItMjQiIHgyPSItNiIgeTI9Ii0xNiIvPgogIDxsaW5lIHgxPSIwIiB5MT0iLTI0IiB4Mj0iMCIgeTI9Ii0xNiIvPgogIDxsaW5lIHgxPSI2IiB5MT0iLTI0IiB4Mj0iNiIgeTI9Ii0xNiIvPgogIDxsaW5lIHgxPSIwIiB5MT0iLTEwIiB4Mj0iMCIgeTI9IjI0Ii8+CjwvZz48L2c+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE1MCwzMCkgcm90YXRlKDEwKSBzY2FsZSgwLjkpIiBzdHJva2U9IiNFMEE0MjkiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIG9wYWNpdHk9IjAuMjAiIGNvbG9yPSIjRTBBNDI5Ij4KPGc+CiAgPGxpbmUgeDE9IjAiIHkxPSItMjYiIHgyPSIwIiB5Mj0iLTQiLz4KICA8cGF0aCBkPSJNMCwtNCBDIC0xMyw0IC0xMywyMCAwLDI2IEMgMTMsMjAgMTMsNCAwLC00Ii8+CiAgPHBhdGggZD0iTTAsLTQgQyAtNywzIC03LDE3IDAsMjQiLz4KICA8cGF0aCBkPSJNMCwtNCBDIDcsMyA3LDE3IDAsMjQiLz4KPC9nPjwvZz4KPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjcwLDU1KSByb3RhdGUoLTgpIHNjYWxlKDAuOTUpIiBzdHJva2U9IiNDMTQ0MkQiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIG9wYWNpdHk9IjAuMjAiIGNvbG9yPSIjQzE0NDJEIj4KPGc+CiAgPHBhdGggZD0iTS0xMSwtNiBhNyw3IDAgMSAxIDQsLTExIGE2LDYgMCAxIDEgOCwtMiBhNyw3IDAgMSAxIDQsMTMgeiIvPgogIDxyZWN0IHg9Ii0xMSIgeT0iLTYiIHdpZHRoPSIyMiIgaGVpZ2h0PSI5IiByeD0iMS41Ii8+CjwvZz48L2c+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDM2MCwxMDApIHJvdGF0ZSgxNCkgc2NhbGUoMS4wKSIgc3Ryb2tlPSIjMkY0QTM4IiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjIwIiBjb2xvcj0iIzJGNEEzOCI+CjxnPgogIDxyZWN0IHg9Ii0xMyIgeT0iLTQiIHdpZHRoPSIyNiIgaGVpZ2h0PSIxNiIgcng9IjIiLz4KICA8bGluZSB4MT0iLTEzIiB5MT0iLTQiIHgyPSIxMyIgeTI9Ii00Ii8+CiAgPGxpbmUgeDE9Ii0xOCIgeTE9Ii02IiB4Mj0iLTEzIiB5Mj0iLTYiLz4KICA8bGluZSB4MT0iMTMiIHkxPSItNiIgeDI9IjE4IiB5Mj0iLTYiLz4KICA8bGluZSB4MT0iMCIgeTE9Ii05IiB4Mj0iMCIgeTI9Ii00Ii8+CiAgPGNpcmNsZSBjeD0iMCIgY3k9Ii0xMSIgcj0iMiIgZmlsbD0iY3VycmVudENvbG9yIiBzdHJva2U9Im5vbmUiLz4KPC9nPjwvZz4KPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNjAsMTUwKSByb3RhdGUoLTEyKSBzY2FsZSgxLjApIiBzdHJva2U9IiNFMEE0MjkiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIG9wYWNpdHk9IjAuMjAiIGNvbG9yPSIjRTBBNDI5Ij4KPGc+CiAgPHBhdGggZD0iTTAsMTYgQyAwLDQgMCwtNiAwLC0xOCIvPgogIDxwYXRoIGQ9Ik0wLC00IEMgNiwtOCAxMiwtNiAxNCwtMTQgQyA2LC0xNCAyLC0xMCAwLC00Ii8+CiAgPHBhdGggZD0iTTAsNiBDIC02LDIgLTEyLDQgLTE0LC00IEMgLTYsLTQgLTIsMCAwLDYiLz4KICA8cGF0aCBkPSJNMCwxNCBDIDUsMTEgOSwxMyAxMCw3IEMgNCw3IDEsMTAgMCwxNCIvPgo8L2c+PC9nPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxOTAsMTQwKSByb3RhdGUoOCkgc2NhbGUoMC45KSIgc3Ryb2tlPSIjQzE0NDJEIiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjIwIiBjb2xvcj0iI0MxNDQyRCI+CjxnPgogIDxyZWN0IHg9Ii0xNiIgeT0iLTQiIHdpZHRoPSIzMiIgaGVpZ2h0PSI4IiByeD0iMiIvPgogIDxyZWN0IHg9Ii0yMiIgeT0iLTIuNSIgd2lkdGg9IjYiIGhlaWdodD0iNSIgcng9IjEuNSIvPgogIDxyZWN0IHg9IjE2IiB5PSItMi41IiB3aWR0aD0iNiIgaGVpZ2h0PSI1IiByeD0iMS41Ii8+CjwvZz48L2c+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDMxMCwxNzApIHJvdGF0ZSgyMCkgc2NhbGUoMC44NSkiIHN0cm9rZT0iIzJGNEEzOCIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgb3BhY2l0eT0iMC4yMCIgY29sb3I9IiMyRjRBMzgiPgo8Zz4KICA8cGF0aCBkPSJNLTEwLC0yOCBoMjAgYTIsMiAwIDAgMSAyLDIgdjggYTEyLDcgMCAwIDEgLTEyLDcgaDAgYTEyLDcgMCAwIDEgLTEyLC03IHYtOCBhMiwyIDAgMCAxIDIsLTIgeiIvPgogIDxsaW5lIHgxPSItNiIgeTE9Ii0yNCIgeDI9Ii02IiB5Mj0iLTE2Ii8+CiAgPGxpbmUgeDE9IjAiIHkxPSItMjQiIHgyPSIwIiB5Mj0iLTE2Ii8+CiAgPGxpbmUgeDE9IjYiIHkxPSItMjQiIHgyPSI2IiB5Mj0iLTE2Ii8+CiAgPGxpbmUgeDE9IjAiIHkxPSItMTAiIHgyPSIwIiB5Mj0iMjQiLz4KPC9nPjwvZz4KPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjAsMjYwKSByb3RhdGUoLTE1KSBzY2FsZSgwLjk1KSIgc3Ryb2tlPSIjRTBBNDI5IiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjIwIiBjb2xvcj0iI0UwQTQyOSI+CjxnPgogIDxsaW5lIHgxPSIwIiB5MT0iLTI2IiB4Mj0iMCIgeTI9Ii00Ii8+CiAgPHBhdGggZD0iTTAsLTQgQyAtMTMsNCAtMTMsMjAgMCwyNiBDIDEzLDIwIDEzLDQgMCwtNCIvPgogIDxwYXRoIGQ9Ik0wLC00IEMgLTcsMyAtNywxNyAwLDI0Ii8+CiAgPHBhdGggZD0iTTAsLTQgQyA3LDMgNywxNyAwLDI0Ii8+CjwvZz48L2c+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE0MCwyNTApIHJvdGF0ZSgxMikgc2NhbGUoMS4wKSIgc3Ryb2tlPSIjQzE0NDJEIiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjIwIiBjb2xvcj0iI0MxNDQyRCI+CjxnPgogIDxwYXRoIGQ9Ik0tMTEsLTYgYTcsNyAwIDEgMSA0LC0xMSBhNiw2IDAgMSAxIDgsLTIgYTcsNyAwIDEgMSA0LDEzIHoiLz4KICA8cmVjdCB4PSItMTEiIHk9Ii02IiB3aWR0aD0iMjIiIGhlaWdodD0iOSIgcng9IjEuNSIvPgo8L2c+PC9nPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNTAsMjgwKSByb3RhdGUoLTEwKSBzY2FsZSgwLjkpIiBzdHJva2U9IiMyRjRBMzgiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIG9wYWNpdHk9IjAuMjAiIGNvbG9yPSIjMkY0QTM4Ij4KPGc+CiAgPHJlY3QgeD0iLTEzIiB5PSItNCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjE2IiByeD0iMiIvPgogIDxsaW5lIHgxPSItMTMiIHkxPSItNCIgeDI9IjEzIiB5Mj0iLTQiLz4KICA8bGluZSB4MT0iLTE4IiB5MT0iLTYiIHgyPSItMTMiIHkyPSItNiIvPgogIDxsaW5lIHgxPSIxMyIgeTE9Ii02IiB4Mj0iMTgiIHkyPSItNiIvPgogIDxsaW5lIHgxPSIwIiB5MT0iLTkiIHgyPSIwIiB5Mj0iLTQiLz4KICA8Y2lyY2xlIGN4PSIwIiBjeT0iLTExIiByPSIyIiBmaWxsPSJjdXJyZW50Q29sb3IiIHN0cm9rZT0ibm9uZSIvPgo8L2c+PC9nPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNzAsMjUwKSByb3RhdGUoMTYpIHNjYWxlKDAuOSkiIHN0cm9rZT0iI0UwQTQyOSIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgb3BhY2l0eT0iMC4yMCIgY29sb3I9IiNFMEE0MjkiPgo8Zz4KICA8cGF0aCBkPSJNMCwxNiBDIDAsNCAwLC02IDAsLTE4Ii8+CiAgPHBhdGggZD0iTTAsLTQgQyA2LC04IDEyLC02IDE0LC0xNCBDIDYsLTE0IDIsLTEwIDAsLTQiLz4KICA8cGF0aCBkPSJNMCw2IEMgLTYsMiAtMTIsNCAtMTQsLTQgQyAtNiwtNCAtMiwwIDAsNiIvPgogIDxwYXRoIGQ9Ik0wLDE0IEMgNSwxMSA5LDEzIDEwLDcgQyA0LDcgMSwxMCAwLDE0Ii8+CjwvZz48L2c+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDkwLDM0MCkgcm90YXRlKC0xNCkgc2NhbGUoMS4wKSIgc3Ryb2tlPSIjQzE0NDJEIiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjIwIiBjb2xvcj0iI0MxNDQyRCI+CjxnPgogIDxyZWN0IHg9Ii0xNiIgeT0iLTQiIHdpZHRoPSIzMiIgaGVpZ2h0PSI4IiByeD0iMiIvPgogIDxyZWN0IHg9Ii0yMiIgeT0iLTIuNSIgd2lkdGg9IjYiIGhlaWdodD0iNSIgcng9IjEuNSIvPgogIDxyZWN0IHg9IjE2IiB5PSItMi41IiB3aWR0aD0iNiIgaGVpZ2h0PSI1IiByeD0iMS41Ii8+CjwvZz48L2c+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDIyMCwzNTApIHJvdGF0ZSg5KSBzY2FsZSgwLjg1KSIgc3Ryb2tlPSIjMkY0QTM4IiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjIwIiBjb2xvcj0iIzJGNEEzOCI+CjxnPgogIDxwYXRoIGQ9Ik0tMTAsLTI4IGgyMCBhMiwyIDAgMCAxIDIsMiB2OCBhMTIsNyAwIDAgMSAtMTIsNyBoMCBhMTIsNyAwIDAgMSAtMTIsLTcgdi04IGEyLDIgMCAwIDEgMiwtMiB6Ii8+CiAgPGxpbmUgeDE9Ii02IiB5MT0iLTI0IiB4Mj0iLTYiIHkyPSItMTYiLz4KICA8bGluZSB4MT0iMCIgeTE9Ii0yNCIgeDI9IjAiIHkyPSItMTYiLz4KICA8bGluZSB4MT0iNiIgeTE9Ii0yNCIgeDI9IjYiIHkyPSItMTYiLz4KICA8bGluZSB4MT0iMCIgeTE9Ii0xMCIgeDI9IjAiIHkyPSIyNCIvPgo8L2c+PC9nPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNDAsMzYwKSByb3RhdGUoLTYpIHNjYWxlKDAuOSkiIHN0cm9rZT0iI0UwQTQyOSIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgb3BhY2l0eT0iMC4yMCIgY29sb3I9IiNFMEE0MjkiPgo8Zz4KICA8bGluZSB4MT0iMCIgeTE9Ii0yNiIgeDI9IjAiIHkyPSItNCIvPgogIDxwYXRoIGQ9Ik0wLC00IEMgLTEzLDQgLTEzLDIwIDAsMjYgQyAxMywyMCAxMyw0IDAsLTQiLz4KICA8cGF0aCBkPSJNMCwtNCBDIC03LDMgLTcsMTcgMCwyNCIvPgogIDxwYXRoIGQ9Ik0wLC00IEMgNywzIDcsMTcgMCwyNCIvPgo8L2c+PC9nPgo8L3N2Zz4=");
+  --herb-green: #2F4A38;
+  --herb-green-dark: #203226;
+  --turmeric: #E0A429;
+  --chili: #C1442D;
+  --ink: #2B2620;
+  --card-bg: #FFFFFF;
+  --border: #F0E3CC;
+  --pink-accent: #E8798C;
+}
+
+body {
+  background-color: var(--bg);
+  background-image: var(--bg-pattern-tile);
+  background-repeat: repeat;
+  background-size: 400px 400px;
+  color: var(--ink);
+  font-family: 'Work Sans', sans-serif;
+}
+
+h1, h2, h3, h4, .nv-heading {
+  font-family: 'Fraunces', serif;
+  color: var(--herb-green);
+}
+
+a { color: var(--herb-green); }
+a:hover { color: var(--chili); }
+
+/* ---- Navbar ---- */
+.nv-navbar {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+}
+.nv-navbar .navbar-brand {
+  font-family: 'Fraunces', serif;
+  color: var(--herb-green);
+  font-weight: 600;
+  font-size: 1.4rem;
+}
+.nv-navbar .navbar-brand::before { content: "🍳 "; }
+.nv-navbar .nav-link { color: var(--ink); }
+.nv-navbar .nav-link.active,
+.nv-navbar .nav-link:hover { color: var(--chili); font-weight: 600; }
+
+/* ---- Buttons ---- */
+.btn-nv-primary {
+  background: var(--herb-green);
+  border-color: var(--herb-green);
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.btn-nv-primary:hover { background: var(--herb-green-dark); border-color: var(--herb-green-dark); color: #fff; }
+
+.btn-nv-accent {
+  background: var(--turmeric);
+  border-color: var(--turmeric);
+  color: var(--ink);
+  border-radius: 999px;
+  font-weight: 600;
+}
+.btn-nv-accent:hover { background: #c98f1e; border-color: #c98f1e; color: var(--ink); }
+
+.btn-nv-danger {
+  background: var(--chili);
+  border-color: var(--chili);
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.btn-nv-danger:hover { background: #a4381f; border-color: #a4381f; color: #fff; }
+
+/* ---- Pinterest-style cards ---- */
+.nv-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(43, 38, 32, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+a:hover > .nv-card,
+.nv-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(43, 38, 32, 0.12);
+}
+
+.nv-card-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #EFE7D4;
+  display: block;
+}
+/* Placeholder "photo" used when a class has no real dish image yet */
+.nv-card-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nv-card-art span { font-size: 3.2rem; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.12)); }
+
+/* Masonry-ish grid for the class listing */
+.nv-masonry {
+  column-count: 1;
+  column-gap: 1.25rem;
+}
+@media (min-width: 576px) { .nv-masonry { column-count: 2; } }
+@media (min-width: 992px) { .nv-masonry { column-count: 3; } }
+.nv-masonry-item {
+  break-inside: avoid;
+  margin-bottom: 1.25rem;
+}
+
+/* ---- Chips (filters + ingredients) ---- */
+.nv-chip {
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nv-chip.selected { background: var(--herb-green); border-color: var(--herb-green); color: #fff; }
+
+.nv-ing-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: #FBF1E0;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.nv-badge-pending { background: var(--turmeric); color: var(--ink); }
+.nv-badge-approved { background: var(--herb-green); color: #fff; }
+.nv-badge-rejected { background: var(--chili); color: #fff; }
+
+.nv-section-title {
+  border-bottom: 2px solid var(--turmeric);
+  display: inline-block;
+  padding-bottom: 0.25rem;
+}
+
+.nv-empty-state {
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: #6b6355;
+  background: rgba(255,255,255,0.6);
+}
+
+/* ---- Hero banner (used on listing/home) ---- */
+.nv-hero {
+  border-radius: 22px;
+  background: linear-gradient(135deg, #FDE9CE 0%, #F7D6D9 50%, #DDEFD8 100%);
+  padding: 2.5rem 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.nv-hero h1 { font-size: 2.2rem; margin-bottom: 0.4rem; }
+.nv-hero p { max-width: 46ch; }
+
+/* Image preview box used on the upload form */
+.nv-image-preview {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 14px;
+  border: 2px dashed var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #FBF6EA;
+  color: #a89a7c;
+  font-size: 0.9rem;
+  text-align: center;
+}
+.nv-image-preview img { width: 100%; height: 100%; object-fit: cover; }

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Moderation — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">Nutriverse</a>
+    <span class="navbar-text ms-auto">Admin</span>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <h1 class="mb-1">Moderation queue</h1>
+  <p class="text-muted mb-4">Review contributor uploads before they go live.</p>
+
+  <div id="error-banner" class="alert alert-warning d-none"></div>
+
+  <ul class="nav nav-tabs mb-4" id="statusTabs">
+    <li class="nav-item"><button class="nav-link active" data-status="pending">Pending</button></li>
+    <li class="nav-item"><button class="nav-link" data-status="approved">Approved</button></li>
+    <li class="nav-item"><button class="nav-link" data-status="rejected">Rejected</button></li>
+  </ul>
+
+  <div id="queue-list" class="row g-3"></div>
+  <div id="empty-state" class="nv-empty-state d-none">
+    <h5>Nothing here</h5>
+    <p class="mb-0">No uploads in this status right now.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  let currentStatus = "pending";
+
+  function renderCards(classes) {
+    const list = document.getElementById("queue-list");
+    const empty = document.getElementById("empty-state");
+    list.innerHTML = "";
+
+    if (classes.length === 0) {
+      empty.classList.remove("d-none");
+      return;
+    }
+    empty.classList.add("d-none");
+
+    classes.forEach((c) => {
+      const col = document.createElement("div");
+      col.className = "col-md-6 col-lg-4";
+      const badgeClass = { pending: "nv-badge-pending", approved: "nv-badge-approved", rejected: "nv-badge-rejected" }[currentStatus];
+      col.innerHTML = `
+        <div class="nv-card h-100 d-flex flex-column">
+          ${nvCardArtHtml(c)}
+          <div class="p-3 d-flex flex-column flex-grow-1">
+          <span class="badge ${badgeClass} align-self-start mb-2">${currentStatus}</span>
+          <h6 class="nv-heading">${c.title}</h6>
+          <div class="text-muted small mb-1">${nvLabel("category", c.category)} &middot; ${nvLabel("meal_time", c.meal_time)}</div>
+          <div class="text-muted small mb-3">${c.uploader_name ? `By ${c.uploader_name} &middot; ` : ""}submitted ${new Date(c.created_at).toLocaleDateString()}</div>
+          <div class="mt-auto d-flex gap-2">
+            <button class="btn btn-sm btn-nv-primary flex-fill" data-action="approve" data-id="${c.id}" ${currentStatus !== "pending" ? "disabled" : ""}>Approve</button>
+            <button class="btn btn-sm btn-nv-danger flex-fill" data-action="reject" data-id="${c.id}" ${currentStatus !== "pending" ? "disabled" : ""}>Reject</button>
+          </div>
+          </div>
+        </div>`;
+      list.appendChild(col);
+    });
+
+    list.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", () => moderate(btn.dataset.id, btn.dataset.action));
+    });
+  }
+
+  async function moderate(id, action) {
+    try {
+      await nvReviewClass(id, action);
+      load();
+    } catch (err) {
+      const banner = document.getElementById("error-banner");
+      banner.textContent = err.message;
+      banner.classList.remove("d-none");
+    }
+  }
+
+  async function load() {
+    const banner = document.getElementById("error-banner");
+    banner.classList.add("d-none");
+    try {
+      // Dedicated endpoint for pending (includes uploader_name via JOIN).
+      // Approved/rejected reuse GET /api/classes?status=... since there's
+      // no dedicated admin endpoint for those yet — no uploader_name there.
+      const classes = currentStatus === "pending"
+        ? await nvGetPendingClasses()
+        : await nvGetClasses({ status: currentStatus });
+      renderCards(classes);
+    } catch (err) {
+      banner.textContent = `Couldn't load the queue: ${err.message}. Is the server running on ${API_BASE}?`;
+      banner.classList.remove("d-none");
+      renderCards([]);
+    }
+  }
+
+  document.querySelectorAll("#statusTabs button").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("#statusTabs button").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentStatus = tab.dataset.status;
+      load();
+    });
+  });
+
+  load();
+</script>
+</body>
+</html>

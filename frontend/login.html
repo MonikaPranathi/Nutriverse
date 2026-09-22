@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In / Sign Up — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">Nutriverse</a>
+  </div>
+</nav>
+
+<div class="container py-5" style="max-width: 480px;">
+  <div class="nv-card p-4">
+    <ul class="nav nav-pills nv-auth-tabs mb-4 justify-content-center" id="authTabs">
+      <li class="nav-item"><button class="nav-link active" data-tab="login">Log In</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="signup">Sign Up</button></li>
+    </ul>
+
+    <div id="banner" class="alert d-none"></div>
+
+    <!-- LOGIN FORM -->
+    <form id="login-form" class="nv-auth-pane">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Email</label>
+        <input type="email" class="form-control" id="login-email" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Password</label>
+        <input type="password" class="form-control" id="login-password" required>
+      </div>
+      <button type="submit" class="btn btn-nv-primary w-100">Log In</button>
+    </form>
+
+    <!-- SIGNUP FORM -->
+    <form id="signup-form" class="nv-auth-pane d-none">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Name</label>
+        <input type="text" class="form-control" id="signup-name" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Email</label>
+        <input type="email" class="form-control" id="signup-email" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Password</label>
+        <input type="password" class="form-control" id="signup-password" minlength="6" required>
+        <div class="form-text">At least 6 characters.</div>
+      </div>
+      <button type="submit" class="btn btn-nv-primary w-100">Create Account</button>
+    </form>
+  </div>
+</div>
+
+<style>
+  .nv-auth-tabs .nav-link { border-radius: 999px; color: var(--ink); font-weight: 600; }
+  .nv-auth-tabs .nav-link.active { background: var(--herb-green); color: #fff; }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script>
+  const banner = document.getElementById("banner");
+  function showBanner(message, type) {
+    banner.textContent = message;
+    banner.className = `alert alert-${type}`;
+  }
+  function hideBanner() {
+    banner.className = "alert d-none";
+  }
+
+  // If already logged in, no reason to be here.
+  if (nvGetCurrentUser()) {
+    window.location.href = "index.html";
+  }
+
+  // --- Tab switching ---
+  document.querySelectorAll("#authTabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#authTabs button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".nv-auth-pane").forEach((p) => p.classList.add("d-none"));
+      document.getElementById(`${btn.dataset.tab}-form`).classList.remove("d-none");
+      hideBanner();
+    });
+  });
+
+  // --- Login ---
+  // IMPORTANT: auth.js's /api/login does NOT follow the {success, message,
+  // data} shape the other routes use (classes.js, admin.js, notifications.js
+  // all go through a respond() helper that wraps the payload in `data`).
+  // Login instead returns { success, user: {...} } directly, with the user
+  // object at the top level, not nested under `data`. nvApi() in
+  // apiclient.js assumes `data.data` and would silently return `undefined`
+  // here — that was the actual bug behind "login doesn't navigate anywhere"
+  // (it stored a broken session and mealtime.html bounced you straight
+  // back). So this page talks to /login and /signup with a raw fetch
+  // instead of nvApi().
+  document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    hideBanner();
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({ success: false, message: "Invalid server response." }));
+      if (!data.success) {
+        throw new Error(data.message || "Login failed.");
+      }
+      nvSetCurrentUser(data.user);
+
+      // The backend has no field yet to remember whether this user has
+      // already answered the meal-time prompt (see /api/set-meal-time in
+      // auth.js — it validates the value but never writes it anywhere),
+      // so we track "has answered this session" purely on the frontend.
+      // Every fresh login re-asks once per browser session, which is an
+      // acceptable placeholder until the backend adds a users.meal_time
+      // column and returns it from /api/login.
+      window.location.href = "mealtime.html";
+    } catch (err) {
+      showBanner(err.message, "danger");
+    }
+  });
+
+  // --- Sign up ---
+  // Same story: /api/signup returns { success, message } with no `data`
+  // field, so it's called with a raw fetch too rather than nvApi().
+  document.getElementById("signup-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    hideBanner();
+    const name = document.getElementById("signup-name").value;
+    const email = document.getElementById("signup-email").value;
+    const password = document.getElementById("signup-password").value;
+
+    try {
+      const res = await fetch(`${API_BASE}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json().catch(() => ({ success: false, message: "Invalid server response." }));
+      if (!data.success) {
+        throw new Error(data.message || "Signup failed.");
+      }
+      showBanner("Account created — log in below.", "success");
+      document.querySelector('#authTabs [data-tab="login"]').click();
+      document.getElementById("login-email").value = email;
+    } catch (err) {
+      showBanner(err.message, "danger");
+    }
+  });
+</script>
+</body>
+</html>
