@@ -1,83 +1,128 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Dashboard — Nutriverse</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
-<link href="style.css" rel="stylesheet">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Dashboard — Nutriverse</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg nv-navbar sticky-top">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">Nutriverse</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#nvNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="nvNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="index.html">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="classlisting.html">Classes</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="ingredientmatch.html"
+                >Ingredient Match</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="upload.html">Upload</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="userdashboard.html">Dashboard</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
 
-<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="index.html">Nutriverse</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nvNav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="classlisting.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
-        <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link active" href="userdashboard.html">Dashboard</a></li>
+    <div class="container py-4">
+      <h1 class="mb-1" id="greeting">My dashboard</h1>
+      <p class="text-muted mb-4">Your notifications and uploads.</p>
+
+      <div id="login-warning" class="alert alert-warning d-none">
+        Log in to see your dashboard.
+      </div>
+
+      <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+          <button class="nav-link active" data-pane="notifications">
+            Notifications
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-pane="uploads">My uploads</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-pane="saved">Saved classes</button>
+        </li>
       </ul>
+
+      <div id="pane-notifications" class="dash-pane"></div>
+      <div id="pane-uploads" class="dash-pane d-none"></div>
+      <div id="pane-saved" class="dash-pane d-none"></div>
     </div>
-  </div>
-</nav>
 
-<div class="container py-4">
-  <h1 class="mb-1" id="greeting">My dashboard</h1>
-  <p class="text-muted mb-4">Your notifications and uploads.</p>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script src="apiclient.js"></script>
+    <script src="ingredient-icons.js"></script>
+    <script>
+      const currentUser = nvGetCurrentUser();
 
-  <div id="login-warning" class="alert alert-warning d-none">
-    Log in to see your dashboard.
-  </div>
-
-  <ul class="nav nav-tabs mb-4">
-    <li class="nav-item"><button class="nav-link active" data-pane="notifications">Notifications</button></li>
-    <li class="nav-item"><button class="nav-link" data-pane="uploads">My uploads</button></li>
-    <li class="nav-item"><button class="nav-link" data-pane="saved">Saved classes</button></li>
-  </ul>
-
-  <div id="pane-notifications" class="dash-pane"></div>
-  <div id="pane-uploads" class="dash-pane d-none"></div>
-  <div id="pane-saved" class="dash-pane d-none"></div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
-<script src="apiclient.js"></script>
-<script src="js/ingredient-icons.js"></script>
-<script>
-  const currentUser = nvGetCurrentUser();
-
-  function renderNotifications(notifications) {
-    const pane = document.getElementById("pane-notifications");
-    if (notifications.length === 0) {
-      pane.innerHTML = `<div class="nv-empty-state">You're all caught up.</div>`;
-      return;
-    }
-    pane.innerHTML = `<div class="nv-card">` + notifications.map(n => `
+      function renderNotifications(notifications) {
+        const pane = document.getElementById("pane-notifications");
+        if (notifications.length === 0) {
+          pane.innerHTML = `<div class="nv-empty-state">You're all caught up.</div>`;
+          return;
+        }
+        pane.innerHTML =
+          `<div class="nv-card">` +
+          notifications
+            .map(
+              (n) => `
       <div class="p-3 border-bottom">
         <div>${n.message}</div>
         <div class="text-muted small">${new Date(n.created_at).toLocaleString()}</div>
-      </div>`).join("") + `</div>`;
-  }
+      </div>`,
+            )
+            .join("") +
+          `</div>`;
+      }
 
-  function renderUploads(uploads) {
-    const pane = document.getElementById("pane-uploads");
-    if (uploads.length === 0) {
-      pane.innerHTML = `<div class="nv-empty-state">You haven't uploaded a class yet. <a href="upload.html">Upload one</a>.</div>`;
-      return;
-    }
-    const badgeClass = { pending: "nv-badge-pending", approved: "nv-badge-approved", rejected: "nv-badge-rejected" };
-    pane.innerHTML = `<div class="nv-card">` + uploads.map(u => `
+      function renderUploads(uploads) {
+        const pane = document.getElementById("pane-uploads");
+        if (uploads.length === 0) {
+          pane.innerHTML = `<div class="nv-empty-state">You haven't uploaded a class yet. <a href="upload.html">Upload one</a>.</div>`;
+          return;
+        }
+        const badgeClass = {
+          pending: "nv-badge-pending",
+          approved: "nv-badge-approved",
+          rejected: "nv-badge-rejected",
+        };
+        pane.innerHTML =
+          `<div class="nv-card">` +
+          uploads
+            .map(
+              (u) => `
       <div class="p-3 border-bottom d-flex align-items-center gap-3">
         <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-             style="width:44px;height:44px;background:${(NV_CATEGORY_ART[u.category] || {}).gradient || '#F3E9D8'};font-size:1.3rem;">
+             style="width:44px;height:44px;background:${(NV_CATEGORY_ART[u.category] || {}).gradient || "#F3E9D8"};font-size:1.3rem;">
           ${(NV_CATEGORY_ART[u.category] || {}).emoji || "🍽️"}
         </div>
         <div class="flex-grow-1">
@@ -85,71 +130,81 @@
           <div class="text-muted small">Submitted ${new Date(u.created_at).toLocaleDateString()}</div>
         </div>
         <span class="badge ${badgeClass[u.status]}">${u.status}</span>
-      </div>`).join("") + `</div>`;
-  }
+      </div>`,
+            )
+            .join("") +
+          `</div>`;
+      }
 
-  function renderSavedPlaceholder() {
-    // The backend only has POST /api/like-class (record a like) — there's
-    // no GET endpoint to list a user's liked/saved classes yet. Ask
-    // Divya/Pranathi for something like GET /api/liked-classes?user_id=.
-    document.getElementById("pane-saved").innerHTML = `
+      function renderSavedPlaceholder() {
+        // The backend only has POST /api/like-class (record a like) — there's
+        // no GET endpoint to list a user's liked/saved classes yet. Ask
+        // Divya/Pranathi for something like GET /api/liked-classes?user_id=.
+        document.getElementById("pane-saved").innerHTML = `
       <div class="nv-empty-state">
         Saved classes aren't available yet — the backend can record a like
         (<code>POST /api/like-class</code>) but there's no endpoint to list
         them back. This tab will populate once that's added.
       </div>`;
-  }
+      }
 
-  document.querySelectorAll("[data-pane]").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll("[data-pane]").forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      document.querySelectorAll(".dash-pane").forEach((p) => p.classList.add("d-none"));
-      document.getElementById(`pane-${tab.dataset.pane}`).classList.remove("d-none");
-    });
-  });
+      document.querySelectorAll("[data-pane]").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document
+            .querySelectorAll("[data-pane]")
+            .forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+          document
+            .querySelectorAll(".dash-pane")
+            .forEach((p) => p.classList.add("d-none"));
+          document
+            .getElementById(`pane-${tab.dataset.pane}`)
+            .classList.remove("d-none");
+        });
+      });
 
-  async function load() {
-    if (!currentUser) {
-      document.getElementById("login-warning").classList.remove("d-none");
-      renderNotifications([]);
-      renderUploads([]);
-      renderSavedPlaceholder();
-      return;
-    }
+      async function load() {
+        if (!currentUser) {
+          document.getElementById("login-warning").classList.remove("d-none");
+          renderNotifications([]);
+          renderUploads([]);
+          renderSavedPlaceholder();
+          return;
+        }
 
-    document.getElementById("greeting").textContent = `Welcome back, ${currentUser.name}`;
+        document.getElementById("greeting").textContent =
+          `Welcome back, ${currentUser.name}`;
 
-    try {
-      const notifications = await nvGetNotifications(currentUser.id);
-      renderNotifications(notifications);
-    } catch (err) {
-      document.getElementById("pane-notifications").innerHTML =
-        `<div class="alert alert-warning">Couldn't load notifications: ${err.message}</div>`;
-    }
+        try {
+          const notifications = await nvGetNotifications(currentUser.id);
+          renderNotifications(notifications);
+        } catch (err) {
+          document.getElementById("pane-notifications").innerHTML =
+            `<div class="alert alert-warning">Couldn't load notifications: ${err.message}</div>`;
+        }
 
-    try {
-      // No dedicated "my uploads" endpoint yet — fetch each status and
-      // filter client-side by uploader_id. Inefficient; worth asking for
-      // a real GET /api/my-uploads?user_id= endpoint.
-      const [pending, approved, rejected] = await Promise.all([
-        nvGetPendingClasses(),
-        nvGetClasses({ status: "approved" }),
-        nvGetClasses({ status: "rejected" }),
-      ]);
-      const mine = [...pending, ...approved, ...rejected]
-        .filter(c => String(c.uploader_id) === String(currentUser.id))
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      renderUploads(mine);
-    } catch (err) {
-      document.getElementById("pane-uploads").innerHTML =
-        `<div class="alert alert-warning">Couldn't load uploads: ${err.message}</div>`;
-    }
+        try {
+          // No dedicated "my uploads" endpoint yet — fetch each status and
+          // filter client-side by uploader_id. Inefficient; worth asking for
+          // a real GET /api/my-uploads?user_id= endpoint.
+          const [pending, approved, rejected] = await Promise.all([
+            nvGetPendingClasses(),
+            nvGetClasses({ status: "approved" }),
+            nvGetClasses({ status: "rejected" }),
+          ]);
+          const mine = [...pending, ...approved, ...rejected]
+            .filter((c) => String(c.uploader_id) === String(currentUser.id))
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          renderUploads(mine);
+        } catch (err) {
+          document.getElementById("pane-uploads").innerHTML =
+            `<div class="alert alert-warning">Couldn't load uploads: ${err.message}</div>`;
+        }
 
-    renderSavedPlaceholder();
-  }
+        renderSavedPlaceholder();
+      }
 
-  load();
-</script>
-</body>
+      load();
+    </script>
+  </body>
 </html>
