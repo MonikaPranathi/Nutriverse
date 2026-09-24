@@ -88,6 +88,37 @@ const NV_ENUMS = {
     { value: "youtube", label: "YouTube link" },
     { value: "external", label: "Other external link" },
   ],
+  tip_type: [
+    { value: "storage", label: "Storage" },
+    { value: "fix_mistake", label: "Fix a mistake" },
+    { value: "substitution", label: "Substitution" },
+    { value: "general", label: "General" },
+  ],
+  gender: [
+    { value: "male", label: "Male" },
+    { value: "female", label: "Female" },
+    { value: "other", label: "Other" },
+  ],
+  activity_level: [
+    { value: "sedentary", label: "Sedentary" },
+    { value: "light", label: "Lightly active" },
+    { value: "moderate", label: "Moderately active" },
+    { value: "active", label: "Active" },
+    { value: "very_active", label: "Very active" },
+  ],
+  goal: [
+    { value: "weight_loss", label: "Weight loss" },
+    { value: "maintenance", label: "Maintenance" },
+    { value: "muscle_gain", label: "Muscle gain" },
+    { value: "diabetes_management", label: "Diabetes management" },
+    { value: "general_health", label: "General health" },
+  ],
+  spice_tolerance: [
+    { value: "mild", label: "Mild" },
+    { value: "medium", label: "Medium" },
+    { value: "hot", label: "Hot" },
+    { value: "extra_hot", label: "Extra hot" },
+  ],
 };
 
 function nvLabel(field, value) {
@@ -146,17 +177,22 @@ async function nvGetClassById(id) {
   return pending.find((c) => String(c.id) === String(id)) || null;
 }
 
-// GET /api/admin/pending
+// GET /api/admin/pending?admin_id=
+// admin.js's requireAdmin middleware reads admin_id from the query/body
+// and checks that user's role — it has to be the logged-in user's id,
+// not left off, or every admin call 401s/403s.
 function nvGetPendingClasses() {
-  return nvApi("/admin/pending", { method: "GET" });
+  const user = nvGetCurrentUser();
+  return nvApi(`/admin/pending?admin_id=${user ? user.id : ""}`, { method: "GET" });
 }
 
-// POST /api/admin/review  { class_id, decision: 'approve' | 'reject' }
+// POST /api/admin/review  { admin_id, class_id, decision: 'approve' | 'reject' }
 function nvReviewClass(classId, decision) {
+  const user = nvGetCurrentUser();
   return nvApi("/admin/review", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ class_id: classId, decision }),
+    body: JSON.stringify({ admin_id: user ? user.id : null, class_id: classId, decision }),
   });
 }
 
@@ -199,4 +235,274 @@ function nvUploadClass(formFields, videoFile, imageFile) {
 function nvToYoutubeEmbed(url) {
   const match = url.match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/);
   return match ? `https://www.youtube.com/embed/${match[1]}` : url;
+}
+
+/* =====================================================================
+   EVERYTHING BELOW IS NEW — wrappers for classes.js/profile.js/planner.js/
+   social.js/collections.js/cookbooks.js/discovery.js/tips.js endpoints
+   that didn't have frontend pages yet.
+   ===================================================================== */
+
+// ---- classes.js: lookups + steps ----
+function nvGetMoods() { return nvApi("/moods", { method: "GET" }); }
+function nvGetAllergens() { return nvApi("/allergens", { method: "GET" }); }
+function nvGetCuisines() { return nvApi("/cuisines", { method: "GET" }); }
+function nvGetClassSteps(classId) { return nvApi(`/class-steps?class_id=${classId}`, { method: "GET" }); }
+function nvAddIngredient(name) {
+  return nvApi("/add-ingredient", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+// ---- social.js: favorites + reviews ----
+function nvFavoriteClass(userId, classId) {
+  return nvApi("/favorite-class", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, class_id: classId }),
+  });
+}
+function nvUnfavoriteClass(userId, classId) {
+  return nvApi("/favorite-class", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, class_id: classId }),
+  });
+}
+function nvGetFavorites(userId) { return nvApi(`/favorites?user_id=${userId}`, { method: "GET" }); }
+
+// POST /api/review-class — multipart (photo optional). fields: user_id,
+// class_id, rating, review_text?. photoFile is an optional File.
+function nvSubmitReview(fields, photoFile) {
+  const fd = new FormData();
+  Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
+  if (photoFile) fd.append("photo", photoFile);
+  return nvApi("/review-class", { method: "POST", body: fd });
+}
+function nvGetReviews(classId) { return nvApi(`/reviews?class_id=${classId}`, { method: "GET" }); }
+function nvGetTopRated(limit) { return nvApi(`/top-rated${limit ? `?limit=${limit}` : ""}`, { method: "GET" }); }
+
+// ---- profile.js: profile, dietary, allergies, body metrics, cuisine prefs ----
+function nvGetProfile(userId) { return nvApi(`/profile?user_id=${userId}`, { method: "GET" }); }
+function nvUpdateProfile(userId, fields) {
+  return nvApi("/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, ...fields }),
+  });
+}
+function nvGetDietaryOptions() { return nvApi("/dietary-options", { method: "GET" }); }
+function nvGetDietaryPreferences(userId) { return nvApi(`/dietary-preferences?user_id=${userId}`, { method: "GET" }); }
+function nvSetDietaryPreferences(userId, preferences) {
+  return nvApi("/dietary-preferences", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, preferences }),
+  });
+}
+function nvGetAllergies(userId) { return nvApi(`/allergies?user_id=${userId}`, { method: "GET" }); }
+function nvSetAllergies(userId, allergies) {
+  return nvApi("/allergies", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, allergies }),
+  });
+}
+function nvGetCuisinePreferences(userId) { return nvApi(`/cuisine-preferences?user_id=${userId}`, { method: "GET" }); }
+function nvSetCuisinePreferences(userId, cuisines) {
+  return nvApi("/cuisine-preferences", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, cuisines }),
+  });
+}
+function nvLogBodyMetrics(userId, fields) {
+  return nvApi("/body-metrics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, ...fields }),
+  });
+}
+function nvGetBodyMetrics(userId) { return nvApi(`/body-metrics?user_id=${userId}`, { method: "GET" }); }
+
+// ---- planner.js: meal plan + shopping list ----
+function nvSetMealPlanEntry(userId, planDate, mealTime, classId) {
+  return nvApi("/meal-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, plan_date: planDate, meal_time: mealTime, class_id: classId }),
+  });
+}
+function nvGetMealPlan(userId, startDate, endDate) {
+  return nvApi(`/meal-plan?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`, { method: "GET" });
+}
+function nvDeleteMealPlanEntry(userId, planDate, mealTime) {
+  return nvApi("/meal-plan", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, plan_date: planDate, meal_time: mealTime }),
+  });
+}
+function nvGetShoppingList(userId, startDate, endDate) {
+  return nvApi(`/shopping-list?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`, { method: "GET" });
+}
+
+// ---- collections.js: curated collections ----
+function nvGetCollections() { return nvApi("/collections", { method: "GET" }); }
+function nvGetCollectionClasses(collectionId) { return nvApi(`/collection-classes?collection_id=${collectionId}`, { method: "GET" }); }
+function nvCreateCollection(name, description) {
+  return nvApi("/collections", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description }),
+  });
+}
+function nvAddClassToCollection(collectionId, classId) {
+  return nvApi("/collection-classes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ collection_id: collectionId, class_id: classId }),
+  });
+}
+function nvGetSeasonalIngredients(month) {
+  return nvApi(`/seasonal-ingredients${month ? `?month=${month}` : ""}`, { method: "GET" });
+}
+
+// ---- cookbooks.js: user-created cookbooks ----
+function nvGetCookbooks(userId) { return nvApi(`/cookbooks?user_id=${userId}`, { method: "GET" }); }
+function nvCreateCookbook(userId, name, description) {
+  return nvApi("/cookbooks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, name, description }),
+  });
+}
+function nvGetCookbookClasses(cookbookId) { return nvApi(`/cookbook-classes?cookbook_id=${cookbookId}`, { method: "GET" }); }
+function nvAddClassToCookbook(userId, cookbookId, classId) {
+  return nvApi("/cookbook-classes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, cookbook_id: cookbookId, class_id: classId }),
+  });
+}
+function nvRemoveClassFromCookbook(userId, cookbookId, classId) {
+  return nvApi("/cookbook-classes", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, cookbook_id: cookbookId, class_id: classId }),
+  });
+}
+
+// ---- discovery.js: waste-not chain, skill ladder, substitutions ----
+function nvGetWasteNotChain(classId, limit) {
+  return nvApi(`/waste-not-chain?class_id=${classId}${limit ? `&limit=${limit}` : ""}`, { method: "GET" });
+}
+function nvCompleteClass(userId, classId) {
+  return nvApi("/complete-class", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, class_id: classId }),
+  });
+}
+function nvGetSkillLadder(userId) { return nvApi(`/skill-ladder?user_id=${userId}`, { method: "GET" }); }
+function nvGetSubstitutions(ingredient) { return nvApi(`/substitutions?ingredient=${encodeURIComponent(ingredient)}`, { method: "GET" }); }
+function nvAddSubstitution(ingredient, substitute, notes) {
+  return nvApi("/substitutions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ingredient, substitute, notes }),
+  });
+}
+
+// ---- tips.js: tip of the day + browsing ----
+function nvGetTipOfDay() { return nvApi("/tip-of-the-day", { method: "GET" }); }
+function nvGetTips(type) { return nvApi(`/tips${type ? `?type=${type}` : ""}`, { method: "GET" }); }
+function nvAddTip(tipText, tipType) {
+  return nvApi("/tips", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tip_text: tipText, tip_type: tipType }),
+  });
+}
+
+// ---- shared small helper: turn an Enter-separated / comma list input
+// into the pipe/comma strings the upload-class endpoint expects ----
+function nvCleanCsv(str) {
+  return String(str || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+/* =====================================================================
+   SHARED NAVBAR — every page has <nav id="nv-navbar-root" class="navbar
+   navbar-expand-lg nv-navbar sticky-top"></nav> and calls
+   nvRenderNavbar("key") once apiclient.js has loaded. Centralizing this
+   means every new page (planner, cookbooks, profile, tips...) shows up
+   in the nav automatically instead of 10 copies going out of sync.
+   ===================================================================== */
+const NV_NAV_LINKS = [
+  { href: "index.html", label: "Home", key: "home" },
+  { href: "classlisting.html", label: "Classes", key: "classes" },
+  { href: "ingredientmatch.html", label: "Ingredient Match", key: "match" },
+  { href: "substitutions.html", label: "Substitutions", key: "subs" },
+  { href: "upload.html", label: "Upload", key: "upload" },
+  { href: "planner.html", label: "Planner", key: "planner" },
+  { href: "cookbooks.html", label: "Cookbooks", key: "cookbooks" },
+  { href: "tips.html", label: "Tips", key: "tips" },
+  { href: "userdashboard.html", label: "Dashboard", key: "dashboard" },
+];
+
+function nvRenderNavbar(activeKey) {
+  const root = document.getElementById("nv-navbar-root");
+  if (!root) return;
+  const user = nvGetCurrentUser();
+
+  const links = NV_NAV_LINKS.map(
+    (l) => `<li class="nav-item"><a class="nav-link${l.key === activeKey ? " active" : ""}" href="${l.href}">${l.label}</a></li>`
+  ).join("");
+
+  const adminLink = user && user.role === "admin"
+    ? `<li class="nav-item"><a class="nav-link${activeKey === "admin" ? " active" : ""}" href="admindashboard.html">Admin</a></li>`
+    : "";
+
+  const authLink = user
+    ? `<li class="nav-item"><a class="nav-link${activeKey === "profile" ? " active" : ""}" href="profile.html">${user.name}</a></li>
+       <li class="nav-item"><a class="nav-link" href="#" id="logout-link">Log out</a></li>`
+    : `<li class="nav-item"><a class="nav-link" href="login.html">Log In</a></li>`;
+
+  root.innerHTML = `
+    <div class="container">
+      <a class="navbar-brand" href="index.html">Nutriverse</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="nvNav">
+        <ul class="navbar-nav ms-auto align-items-lg-center">
+          ${links}
+          ${adminLink}
+          ${authLink}
+        </ul>
+      </div>
+    </div>`;
+
+  const logoutLink = document.getElementById("logout-link");
+  if (logoutLink) {
+    logoutLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("nv_user");
+      sessionStorage.removeItem("nv_meal_time");
+      window.location.href = "login.html";
+    });
+  }
+}
+
+// Small shared helper: render a 1-5 star display (read-only) from a
+// numeric rating, used on class cards/detail/reviews.
+function nvStarDisplay(rating) {
+  const r = Math.round(Number(rating) || 0);
+  return `<span class="nv-star-display">${"★".repeat(r)}${"☆".repeat(5 - r)}</span>`;
 }

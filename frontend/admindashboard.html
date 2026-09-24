@@ -11,12 +11,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="index.html">Nutriverse</a>
-    <span class="navbar-text ms-auto">Admin</span>
-  </div>
-</nav>
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
 
 <div class="container py-4">
   <h1 class="mb-1">Moderation queue</h1>
@@ -41,6 +36,18 @@
 <script src="apiclient.js"></script>
 <script src="ingredient-icons.js"></script>
 <script>
+  nvRenderNavbar("admin");
+
+  const currentAdmin = nvGetCurrentUser();
+  if (!currentAdmin || currentAdmin.role !== "admin") {
+    document.querySelector(".container.py-4").innerHTML = `
+      <div class="nv-empty-state">
+        <h5>Admins only</h5>
+        <p class="mb-0">${currentAdmin ? "Your account doesn't have admin access." : "Log in with an admin account to see the moderation queue."}</p>
+      </div>`;
+    throw new Error("not admin");
+  }
+
   let currentStatus = "pending";
 
   function renderCards(classes) {

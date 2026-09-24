@@ -11,105 +11,116 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="index.html">Nutriverse</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nvNav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="classlisting.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
-        <li class="nav-item"><a class="nav-link active" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
 
-<div class="container py-4" style="max-width: 720px;">
-  <h1 class="mb-1">Upload a class</h1>
-  <p class="text-muted mb-4">Share a recipe class with the Nutriverse community. It'll go to an admin for review before it goes live.</p>
+<div class="container py-4" style="max-width: 760px;">
+  <h1 class="mb-1">Share a class</h1>
+  <p class="text-muted mb-4">Teach the community something. It'll go to a moderator for review before it's live.</p>
 
   <div id="login-warning" class="alert alert-warning d-none">
-    You need to be logged in to upload a class.
+    <a href="login.html">Log in</a> to upload a class.
   </div>
-  <div id="success-banner" class="alert alert-success d-none"></div>
-  <div id="error-banner" class="alert alert-danger d-none"></div>
+  <div id="banner" class="alert d-none"></div>
 
-  <form id="upload-form" class="nv-card p-4">
-    <div class="mb-3">
-      <label class="form-label fw-semibold">Title</label>
-      <input type="text" class="form-control" id="title" required>
-    </div>
-
-    <div class="row g-3 mb-3">
-      <div class="col-md-6">
-        <label class="form-label fw-semibold">Category</label>
-        <select class="form-select" id="category" required></select>
+  <form id="upload-form">
+    <div class="nv-form-section">
+      <h5 class="nv-heading">The basics</h5>
+      <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input type="text" class="form-control" id="f-title" required>
       </div>
-      <div class="col-md-6">
-        <label class="form-label fw-semibold">Meal time</label>
-        <select class="form-select" id="meal_time" required></select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label fw-semibold">Skill level</label>
-        <select class="form-select" id="skill_level" required></select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label fw-semibold">Time needed</label>
-        <select class="form-select" id="time_needed" required></select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label fw-semibold">Budget</label>
-        <select class="form-select" id="budget" required></select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label fw-semibold">Taste</label>
-        <select class="form-select" id="taste" required></select>
-      </div>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label fw-semibold">Ingredients</label>
-      <input type="text" class="form-control" id="ingredients" placeholder="rice, paneer, turmeric (comma-separated)">
-      <div class="form-text">Comma-separated — matches the backend's expected format.</div>
-      <div id="ingredient-preview" class="mt-2"></div>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label fw-semibold">Dish photo</label>
-      <div class="row g-2 align-items-start">
-        <div class="col-4 col-sm-3">
-          <div class="nv-image-preview" id="image-preview">No photo yet</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="f-category" required></select>
         </div>
-        <div class="col">
-          <input type="file" class="form-control" id="dish_image" accept="image/png,image/jpeg,image/webp">
-          <div class="form-text">
-            A quick photo of the finished dish so people know what it looks like
-            before they read the whole recipe. <strong>Note:</strong> the
-            backend doesn't have a field for this yet (see project notes) —
-            it'll be sent along, but may not be saved until that's added.
-          </div>
+        <div class="col-md-6">
+          <label class="form-label">Meal time</label>
+          <select class="form-select" id="f-meal_time"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Budget</label>
+          <select class="form-select" id="f-budget"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Time needed</label>
+          <select class="form-select" id="f-time_needed"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Taste</label>
+          <select class="form-select" id="f-taste"></select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Skill level</label>
+          <select class="form-select" id="f-skill_level"></select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Servings</label>
+          <input type="number" min="1" class="form-control" id="f-servings">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Prep time (minutes)</label>
+          <input type="number" min="0" class="form-control" id="f-prep_time_minutes">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Cook time (minutes)</label>
+          <input type="number" min="0" class="form-control" id="f-cook_time_minutes">
         </div>
       </div>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label fw-semibold">Video source</label>
-      <select class="form-select mb-2" id="source_type"></select>
-      <div id="native-video-field">
-        <input type="file" class="form-control" id="video_file" accept="video/mp4,video/quicktime,video/webm">
-        <div class="form-text">mp4, mov, or webm — up to 100MB.</div>
+    <div class="nv-form-section">
+      <h5 class="nv-heading">The video</h5>
+      <div class="mb-3">
+        <label class="form-label">How are you sharing this?</label>
+        <select class="form-select" id="f-source_type"></select>
       </div>
-      <div id="url-video-field" class="d-none">
-        <input type="url" class="form-control" id="video_url" placeholder="https://...">
+      <div id="video-upload-field" class="mb-3">
+        <label class="form-label">Video file (mp4, mov, or webm — up to 100MB)</label>
+        <input type="file" class="form-control" id="f-video" accept="video/mp4,video/quicktime,video/webm">
+      </div>
+      <div id="video-url-field" class="mb-3 d-none">
+        <label class="form-label">Video link</label>
+        <input type="url" class="form-control" id="f-video_url" placeholder="https://...">
       </div>
     </div>
 
-    <button type="submit" class="btn btn-nv-primary" id="submit-btn">Submit for review</button>
+    <div class="nv-form-section">
+      <h5 class="nv-heading">Ingredients</h5>
+      <p class="text-muted small">Comma-separated — e.g. "Rice, Onion, Paneer, Green Chili"</p>
+      <input type="text" class="form-control mb-2" id="f-ingredients" placeholder="Rice, Onion, Paneer">
+      <details>
+        <summary class="text-muted small" style="cursor:pointer;">Add quantities (optional)</summary>
+        <p class="text-muted small mt-2 mb-2">One per line, matching an ingredient above — e.g. "Rice: 2 cup"</p>
+        <textarea class="form-control" id="f-quantities" rows="3" placeholder="Rice: 2 cup&#10;Onion: 1 whole"></textarea>
+      </details>
+    </div>
+
+    <div class="nv-form-section">
+      <h5 class="nv-heading">Tagging</h5>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Moods</label>
+          <input type="text" class="form-control" id="f-moods" placeholder="comfort, celebration">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Cuisines</label>
+          <input type="text" class="form-control" id="f-cuisines" placeholder="South Indian, Thai">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Allergens present</label>
+          <input type="text" class="form-control" id="f-allergens" placeholder="Dairy, Egg">
+        </div>
+      </div>
+    </div>
+
+    <div class="nv-form-section">
+      <h5 class="nv-heading">Steps</h5>
+      <p class="text-muted small">One step per line.</p>
+      <textarea class="form-control" id="f-steps" rows="5" placeholder="Boil the rice&#10;Saute onions until golden&#10;Mix and simmer for 10 min"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-nv-primary btn-lg w-100" id="submit-btn">Submit for review</button>
   </form>
 </div>
 
@@ -117,94 +128,99 @@
 <script src="apiclient.js"></script>
 <script src="ingredient-icons.js"></script>
 <script>
-  // Live ingredient icon preview as the contributor types
-  document.getElementById("ingredients").addEventListener("input", (e) => {
-    document.getElementById("ingredient-preview").innerHTML = nvIngredientChipsHtml(e.target.value);
-  });
-
-  // Live dish-photo preview
-  document.getElementById("dish_image").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    const preview = document.getElementById("image-preview");
-    if (!file) {
-      preview.innerHTML = "No photo yet";
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" alt="Dish preview">`; };
-    reader.readAsDataURL(file);
-  });
+  nvRenderNavbar("upload");
+  const user = nvGetCurrentUser();
+  if (!user) {
+    document.getElementById("login-warning").classList.remove("d-none");
+    document.getElementById("upload-form").classList.add("d-none");
+  }
 
   function fillSelect(id, field) {
     const el = document.getElementById(id);
-    el.innerHTML = NV_ENUMS[field].map(o => `<option value="${o.value}">${o.label}</option>`).join("");
+    NV_ENUMS[field].forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      el.appendChild(opt);
+    });
   }
-  ["category", "meal_time", "skill_level", "time_needed", "budget", "taste", "source_type"]
-    .forEach(field => fillSelect(field, field));
+  ["category", "meal_time", "budget", "time_needed", "taste", "skill_level", "source_type"].forEach((f) => fillSelect(`f-${f}`, f));
 
-  document.getElementById("source_type").addEventListener("change", (e) => {
+  document.getElementById("f-source_type").addEventListener("change", (e) => {
     const isNative = e.target.value === "native";
-    document.getElementById("native-video-field").classList.toggle("d-none", !isNative);
-    document.getElementById("url-video-field").classList.toggle("d-none", isNative);
+    document.getElementById("video-upload-field").classList.toggle("d-none", !isNative);
+    document.getElementById("video-url-field").classList.toggle("d-none", isNative);
   });
+  document.getElementById("video-url-field").classList.remove("d-none");
+  document.getElementById("video-upload-field").classList.add("d-none");
+  document.getElementById("f-source_type").value = "youtube";
 
-  const currentUser = nvGetCurrentUser();
-  if (!currentUser) {
-    document.getElementById("login-warning").classList.remove("d-none");
-    document.getElementById("submit-btn").disabled = true;
+  // Turns "Rice: 2 cup\nOnion: 1 whole" into the
+  // { "Rice": {"quantity": 2, "unit": "cup"} } JSON the backend expects.
+  function parseQuantities(text) {
+    const result = {};
+    text.split("\n").forEach((line) => {
+      const [name, rest] = line.split(":");
+      if (!name || !rest) return;
+      const trimmedRest = rest.trim();
+      const match = trimmedRest.match(/^([\d.]+)\s*(.*)$/);
+      if (!match) return;
+      result[name.trim()] = { quantity: parseFloat(match[1]), unit: match[2].trim() || null };
+    });
+    return result;
   }
 
   document.getElementById("upload-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const errorBanner = document.getElementById("error-banner");
-    const successBanner = document.getElementById("success-banner");
-    errorBanner.classList.add("d-none");
-    successBanner.classList.add("d-none");
+    const banner = document.getElementById("banner");
+    banner.className = "alert d-none";
+    const btn = document.getElementById("submit-btn");
+    btn.disabled = true;
+    btn.textContent = "Submitting…";
 
-    const sourceType = document.getElementById("source_type").value;
-    const videoFile = document.getElementById("video_file").files[0];
-    const videoUrl = document.getElementById("video_url").value;
-
-    if (sourceType === "native" && !videoFile) {
-      errorBanner.textContent = "Please choose a video file.";
-      errorBanner.classList.remove("d-none");
-      return;
-    }
-    if (sourceType !== "native" && !videoUrl) {
-      errorBanner.textContent = "Please provide a video URL.";
-      errorBanner.classList.remove("d-none");
-      return;
-    }
-
+    const sourceType = document.getElementById("f-source_type").value;
     const fields = {
-      uploader_id: currentUser.id,
-      title: document.getElementById("title").value,
-      category: document.getElementById("category").value,
-      meal_time: document.getElementById("meal_time").value,
-      skill_level: document.getElementById("skill_level").value,
-      time_needed: document.getElementById("time_needed").value,
-      budget: document.getElementById("budget").value,
-      taste: document.getElementById("taste").value,
+      uploader_id: user.id,
+      title: document.getElementById("f-title").value,
+      category: document.getElementById("f-category").value,
+      meal_time: document.getElementById("f-meal_time").value,
+      budget: document.getElementById("f-budget").value,
+      time_needed: document.getElementById("f-time_needed").value,
+      taste: document.getElementById("f-taste").value,
+      skill_level: document.getElementById("f-skill_level").value,
       source_type: sourceType,
-      ingredients: document.getElementById("ingredients").value,
+      servings: document.getElementById("f-servings").value,
+      prep_time_minutes: document.getElementById("f-prep_time_minutes").value,
+      cook_time_minutes: document.getElementById("f-cook_time_minutes").value,
+      ingredients: nvCleanCsv(document.getElementById("f-ingredients").value),
+      moods: nvCleanCsv(document.getElementById("f-moods").value),
+      cuisines: nvCleanCsv(document.getElementById("f-cuisines").value),
+      allergens: nvCleanCsv(document.getElementById("f-allergens").value),
+      steps: document.getElementById("f-steps").value.split("\n").map((s) => s.trim()).filter(Boolean).join("|"),
     };
-    if (sourceType !== "native") fields.video_url = videoUrl;
-
-    const imageFile = document.getElementById("dish_image").files[0];
+    const quantities = parseQuantities(document.getElementById("f-quantities").value);
+    if (Object.keys(quantities).length > 0) {
+      fields.ingredient_quantities = JSON.stringify(quantities);
+    }
+    if (sourceType !== "native") {
+      fields.video_url = document.getElementById("f-video_url").value;
+    }
+    const videoFile = sourceType === "native" ? document.getElementById("f-video").files[0] : null;
 
     try {
-      const result = await nvUploadClass(fields, sourceType === "native" ? videoFile : null, imageFile);
-      successBanner.textContent = `Class submitted for review (id: ${result.class_id}).`;
-      successBanner.classList.remove("d-none");
+      await nvUploadClass(fields, videoFile, null);
+      banner.textContent = "Submitted! It'll show up on your dashboard once a moderator reviews it.";
+      banner.className = "alert alert-success";
       document.getElementById("upload-form").reset();
-      ["category", "meal_time", "skill_level", "time_needed", "budget", "taste", "source_type"]
-        .forEach(field => fillSelect(field, field));
-      document.getElementById("url-video-field").classList.add("d-none");
-      document.getElementById("ingredient-preview").innerHTML = "";
-      document.getElementById("image-preview").innerHTML = "No photo yet";
+      document.getElementById("f-source_type").value = "youtube";
+      document.getElementById("video-url-field").classList.remove("d-none");
+      document.getElementById("video-upload-field").classList.add("d-none");
     } catch (err) {
-      errorBanner.textContent = err.message;
-      errorBanner.classList.remove("d-none");
+      banner.textContent = err.message;
+      banner.className = "alert alert-warning";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Submit for review";
     }
   });
 </script>

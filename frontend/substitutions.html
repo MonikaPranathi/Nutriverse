@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Substitutions — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
+
+<div class="container py-4" style="max-width: 620px;">
+  <h1 class="mb-1">No X? Use Y.</h1>
+  <p class="text-muted mb-4">Look up a substitute for an ingredient you're out of, or share one you've discovered.</p>
+
+  <div id="banner" class="alert d-none"></div>
+
+  <div class="position-relative mb-4">
+    <span class="nv-search-icon" style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);opacity:0.5;">&#128269;</span>
+    <input type="text" id="sub-search" class="form-control nv-search-input" style="padding-left:2.6rem;border-radius:999px;height:52px;" placeholder="What are you out of?">
+  </div>
+
+  <div id="results-slot"></div>
+
+  <div class="nv-form-section mt-4">
+    <h5>Know a good swap?</h5>
+    <p class="text-muted small">Add it so the next person searching doesn't have to guess.</p>
+    <div class="row g-2">
+      <div class="col-md-4"><input class="form-control" id="c-ingredient" placeholder="Ingredient (e.g. Paneer)"></div>
+      <div class="col-md-4"><input class="form-control" id="c-substitute" placeholder="Substitute (e.g. Tofu)"></div>
+      <div class="col-md-4"><input class="form-control" id="c-notes" placeholder="Notes (optional)"></div>
+    </div>
+    <button class="btn btn-nv-primary mt-3" id="c-submit">Add substitution</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  nvRenderNavbar("subs");
+
+  function showBanner(message, type) {
+    const b = document.getElementById("banner");
+    b.textContent = message;
+    b.className = `alert alert-${type}`;
+  }
+
+  let searchTimer;
+  document.getElementById("sub-search").addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    const q = e.target.value.trim();
+    if (!q) { document.getElementById("results-slot").innerHTML = ""; return; }
+    searchTimer = setTimeout(() => runSearch(q), 300);
+  });
+
+  async function runSearch(ingredient) {
+    const slot = document.getElementById("results-slot");
+    slot.innerHTML = `<div class="text-muted small">Searching…</div>`;
+    try {
+      const result = await nvGetSubstitutions(ingredient);
+      if (result.substitutes.length === 0) {
+        slot.innerHTML = `<div class="nv-empty-state">No substitutions logged for "${result.ingredient}" yet. Add one below!</div>`;
+        return;
+      }
+      slot.innerHTML = `<div class="nv-card p-3">` + result.substitutes.map((s) => `
+        <div class="nv-sub-row">
+          <span>${nvIngredientIcon(result.ingredient)} ${result.ingredient}</span>
+          <span class="nv-sub-arrow">&rarr;</span>
+          <span>${nvIngredientIcon(s.name)} ${s.name}</span>
+          ${s.notes ? `<span class="text-muted small ms-2">(${s.notes})</span>` : ""}
+        </div>`).join("") + `</div>`;
+    } catch (err) {
+      slot.innerHTML = `<div class="alert alert-warning">${err.message}</div>`;
+    }
+  }
+
+  document.getElementById("c-submit").addEventListener("click", async () => {
+    const ingredient = document.getElementById("c-ingredient").value.trim();
+    const substitute = document.getElementById("c-substitute").value.trim();
+    const notes = document.getElementById("c-notes").value.trim();
+    if (!ingredient || !substitute) {
+      showBanner("Fill in both the ingredient and its substitute.", "warning");
+      return;
+    }
+    try {
+      await nvAddSubstitution(ingredient, substitute, notes);
+      showBanner("Added — thanks for contributing!", "success");
+      document.getElementById("c-ingredient").value = "";
+      document.getElementById("c-substitute").value = "";
+      document.getElementById("c-notes").value = "";
+    } catch (err) {
+      showBanner(err.message, "warning");
+    }
+  });
+</script>
+</body>
+</html>

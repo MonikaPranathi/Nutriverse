@@ -11,23 +11,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg nv-navbar sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="index.html">Nutriverse</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nvNav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-        <li class="nav-item"><a class="nav-link active" href="classlisting.html">Classes</a></li>
-        <li class="nav-item"><a class="nav-link" href="ingredientmatch.html">Ingredient Match</a></li>
-        <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
-        <li class="nav-item"><a class="nav-link" href="userdashboard.html">Dashboard</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
 
 <div class="container py-4" id="detail-root">
   <div class="text-muted">Loading class…</div>
@@ -70,6 +54,116 @@
       </div>`;
   }
 
+  function stepsHtml(steps) {
+    if (!steps || steps.length === 0) return "";
+    return `
+      <h5 class="nv-section-title mb-3 mt-4">Steps</h5>
+      <ol class="mb-4">
+        ${steps.map((s) => `<li class="mb-2">${s.instruction}</li>`).join("")}
+      </ol>`;
+  }
+
+  function wasteNotHtml(chain) {
+    if (!chain || !chain.suggestions || chain.suggestions.length === 0) return "";
+    return `
+      <h5 class="nv-section-title mb-3 mt-4">Use up the leftovers</h5>
+      <p class="text-muted small mb-3">Classes that reuse ingredients you already opened for this one.</p>
+      ${chain.suggestions.map((s) => `
+        <a href="classdetail.html?id=${s.class_id}" class="text-decoration-none">
+          <div class="nv-sub-row">
+            <div class="flex-grow-1">
+              <div class="fw-semibold" style="color:var(--ink);">${s.title}</div>
+              <div class="text-muted small">Reuses ${s.reused_ingredients.join(", ")}${s.need_to_buy > 0 ? ` &middot; ${s.need_to_buy} more to buy` : ""}</div>
+            </div>
+            <span class="badge btn-nv-accent">${s.reused_count}/${s.total_required}</span>
+          </div>
+        </a>`).join("")}`;
+  }
+
+  function reviewsHtml(summary) {
+    const avg = summary.average_rating;
+    return `
+      <div class="d-flex align-items-center gap-2 mb-3">
+        ${avg ? nvStarDisplay(avg) : `<span class="text-muted small">No ratings yet</span>`}
+        ${avg ? `<span class="fw-semibold">${avg}</span><span class="text-muted small">(${summary.review_count} review${summary.review_count === 1 ? "" : "s"})</span>` : ""}
+      </div>
+      <div id="review-form-slot" class="mb-3"></div>
+      <div id="review-list">
+        ${summary.reviews.length === 0
+          ? `<p class="text-muted small">No reviews yet — be the first to leave one.</p>`
+          : summary.reviews.map((r) => `
+            <div class="nv-review-card">
+              <div class="d-flex justify-content-between">
+                <span class="fw-semibold">${r.user_name}</span>
+                ${nvStarDisplay(r.rating)}
+              </div>
+              ${r.review_text ? `<div class="mt-1">${r.review_text}</div>` : ""}
+              ${r.photo_url ? `<img src="${API_BASE.replace("/api", "")}/${r.photo_url}" class="nv-review-photo">` : ""}
+              <div class="text-muted small mt-1">${new Date(r.created_at).toLocaleDateString()}</div>
+            </div>`).join("")}
+      </div>`;
+  }
+
+  function reviewFormHtml() {
+    return `
+      <div class="nv-card p-3">
+        <div class="fw-semibold mb-2">Leave a review</div>
+        <div class="nv-star-input mb-2" id="review-stars">
+          ${[1, 2, 3, 4, 5].map((n) => `<span class="star" data-val="${n}">★</span>`).join("")}
+        </div>
+        <textarea class="form-control mb-2" id="review-text" rows="2" placeholder="How did it turn out? (optional)"></textarea>
+        <input type="file" class="form-control mb-2" id="review-photo" accept="image/jpeg,image/png,image/webp">
+        <button class="btn btn-nv-primary btn-sm" id="review-submit">Submit review</button>
+        <div id="review-status" class="text-muted small mt-2"></div>
+      </div>`;
+  }
+
+  function wireReviewForm(cls) {
+    const user = nvGetCurrentUser();
+    const slot = document.getElementById("review-form-slot");
+    if (!user) {
+      slot.innerHTML = `<p class="text-muted small"><a href="login.html">Log in</a> to leave a review.</p>`;
+      return;
+    }
+    slot.innerHTML = reviewFormHtml();
+    let rating = 0;
+    const stars = slot.querySelectorAll("#review-stars .star");
+    stars.forEach((star) => {
+      star.addEventListener("click", () => {
+        rating = parseInt(star.dataset.val, 10);
+        stars.forEach((s) => s.classList.toggle("filled", parseInt(s.dataset.val, 10) <= rating));
+      });
+    });
+    document.getElementById("review-submit").addEventListener("click", async () => {
+      const statusEl = document.getElementById("review-status");
+      if (!rating) {
+        statusEl.textContent = "Pick a star rating first.";
+        return;
+      }
+      const photoInput = document.getElementById("review-photo");
+      try {
+        await nvSubmitReview(
+          { user_id: user.id, class_id: cls.id, rating, review_text: document.getElementById("review-text").value },
+          photoInput.files[0] || null
+        );
+        statusEl.textContent = "Review saved ✓";
+        loadReviews(cls.id);
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    });
+  }
+
+  async function loadReviews(classId) {
+    try {
+      const summary = await nvGetReviews(classId);
+      document.getElementById("reviews-slot").innerHTML = reviewsHtml(summary);
+      wireReviewForm({ id: classId });
+    } catch (err) {
+      document.getElementById("reviews-slot").innerHTML = `<p class="text-muted small">Couldn't load reviews: ${err.message}</p>`;
+    }
+  }
+
   function renderClass(cls) {
     const root = document.getElementById("detail-root");
     document.title = `${cls.title} — Nutriverse`;
@@ -79,21 +173,22 @@
         <div class="col-lg-8">
           ${videoPlayerMarkup(cls)}
           <h1 class="mt-3 mb-1">${cls.title}</h1>
-          <div class="text-muted mb-3">${nvLabel("meal_time", cls.meal_time)} &middot; ${nvLabel("time_needed", cls.time_needed)} &middot; ${nvLabel("skill_level", cls.skill_level)}</div>
+          <div class="text-muted mb-3">${nvLabel("meal_time", cls.meal_time)} &middot; ${nvLabel("time_needed", cls.time_needed)} &middot; ${nvLabel("skill_level", cls.skill_level)}${cls.servings ? ` &middot; serves ${cls.servings}` : ""}</div>
           <div class="d-flex flex-wrap gap-2 mb-4">
             <span class="badge text-bg-light">${nvLabel("category", cls.category)}</span>
             <span class="badge text-bg-light">${nvLabel("budget", cls.budget)} budget</span>
             <span class="badge text-bg-light">${nvLabel("taste", cls.taste)}</span>
+            ${cls.prep_time_minutes ? `<span class="badge text-bg-light">${cls.prep_time_minutes}m prep</span>` : ""}
+            ${cls.cook_time_minutes ? `<span class="badge text-bg-light">${cls.cook_time_minutes}m cook</span>` : ""}
           </div>
 
           <h5 class="nv-section-title mb-3">What you'll need</h5>
-          ${cls.ingredients
-            ? nvIngredientChipsHtml(cls.ingredients)
-            : `<p class="text-muted small">Ingredient list isn't wired up on this page yet —
-               the backend doesn't return per-class ingredients from
-               <code>GET /api/classes</code> today, only ingredient
-               <em>match counts</em>. Worth asking Divya to include an
-               <code>ingredients</code> array on the class response.</p>`}
+          <div id="ingredients-slot"><span class="text-muted small">Loading…</span></div>
+          <div id="steps-slot"></div>
+          <div id="waste-not-slot"></div>
+
+          <h5 class="nv-section-title mb-3 mt-4">Reviews</h5>
+          <div id="reviews-slot"><span class="text-muted small">Loading…</span></div>
         </div>
 
         <div class="col-lg-4">
@@ -104,20 +199,23 @@
               never heard of it before!</div>
             </div>
           </div>
+          <div class="nv-card p-3 mb-3">
+            <button class="btn btn-nv-primary w-100 mb-2" id="like-btn">Like this class</button>
+            <button class="btn btn-outline-secondary w-100 mb-2" id="favorite-btn">Save to favorites</button>
+            <button class="btn btn-nv-accent w-100" id="complete-btn">Mark as completed</button>
+            <div id="action-status" class="text-muted small mt-2"></div>
+          </div>
           <div class="nv-card p-3">
-            <button class="btn btn-nv-primary w-100" id="like-btn">Like this class</button>
-            <div id="like-status" class="text-muted small mt-2"></div>
+            <div class="fw-semibold mb-1">Add to a cookbook</div>
+            <div id="cookbook-add-slot" class="text-muted small">Loading…</div>
           </div>
         </div>
       </div>`;
 
     document.getElementById("like-btn").addEventListener("click", async () => {
       const user = nvGetCurrentUser();
-      const statusEl = document.getElementById("like-status");
-      if (!user) {
-        statusEl.textContent = "Log in to like a class.";
-        return;
-      }
+      const statusEl = document.getElementById("action-status");
+      if (!user) { statusEl.textContent = "Log in to like a class."; return; }
       try {
         await nvLikeClass(user.id, cls.id);
         statusEl.textContent = "Liked ✓";
@@ -125,9 +223,82 @@
         statusEl.textContent = err.message;
       }
     });
+
+    document.getElementById("favorite-btn").addEventListener("click", async () => {
+      const user = nvGetCurrentUser();
+      const statusEl = document.getElementById("action-status");
+      if (!user) { statusEl.textContent = "Log in to save a class."; return; }
+      try {
+        await nvFavoriteClass(user.id, cls.id);
+        statusEl.textContent = "Saved to favorites ✓";
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    });
+
+    document.getElementById("complete-btn").addEventListener("click", async () => {
+      const user = nvGetCurrentUser();
+      const statusEl = document.getElementById("action-status");
+      if (!user) { statusEl.textContent = "Log in to track completed classes."; return; }
+      try {
+        await nvCompleteClass(user.id, cls.id);
+        statusEl.textContent = "Marked as completed — nice work! Check your Skill Ladder on the dashboard.";
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    });
+
+    // Ingredients + waste-not chain both come from the same endpoint —
+    // GET /api/classes doesn't return per-class ingredients, but
+    // /api/waste-not-chain does, as the "leftovers" for the source class.
+    nvGetWasteNotChain(cls.id).then((chain) => {
+      document.getElementById("ingredients-slot").innerHTML = chain.leftovers.length
+        ? nvIngredientChipsHtml(chain.leftovers)
+        : `<p class="text-muted small">No ingredients tagged on this class yet.</p>`;
+      document.getElementById("waste-not-slot").innerHTML = wasteNotHtml(chain);
+    }).catch(() => {
+      document.getElementById("ingredients-slot").innerHTML = `<p class="text-muted small">Couldn't load ingredients.</p>`;
+    });
+
+    nvGetClassSteps(cls.id).then((steps) => {
+      document.getElementById("steps-slot").innerHTML = stepsHtml(steps);
+    }).catch(() => {});
+
+    loadReviews(cls.id);
+
+    // Add-to-cookbook widget
+    const cookbookSlot = document.getElementById("cookbook-add-slot");
+    const user = nvGetCurrentUser();
+    if (!user) {
+      cookbookSlot.innerHTML = `<a href="login.html">Log in</a> to save this to a cookbook.`;
+    } else {
+      nvGetCookbooks(user.id).then((cookbooks) => {
+        if (cookbooks.length === 0) {
+          cookbookSlot.innerHTML = `You don't have a cookbook yet. <a href="cookbooks.html">Create one</a>.`;
+          return;
+        }
+        cookbookSlot.innerHTML = `
+          <select class="form-select form-select-sm mb-2" id="cookbook-select">
+            ${cookbooks.map((cb) => `<option value="${cb.id}">${cb.name}</option>`).join("")}
+          </select>
+          <button class="btn btn-sm btn-outline-secondary w-100" id="cookbook-add-btn">Add</button>`;
+        document.getElementById("cookbook-add-btn").addEventListener("click", async () => {
+          const cookbookId = document.getElementById("cookbook-select").value;
+          try {
+            await nvAddClassToCookbook(user.id, cookbookId, cls.id);
+            cookbookSlot.innerHTML = `Added ✓ — <a href="cookbooks.html">view cookbooks</a>`;
+          } catch (err) {
+            cookbookSlot.innerHTML = `<span class="text-danger">${err.message}</span>`;
+          }
+        });
+      }).catch(() => {
+        cookbookSlot.innerHTML = `<span class="text-muted">Couldn't load cookbooks.</span>`;
+      });
+    }
   }
 
   async function load() {
+    nvRenderNavbar("classes");
     if (!classId) {
       document.getElementById("detail-root").innerHTML =
         `<div class="nv-empty-state">No class id in the URL. Go back to <a href="classlisting.html">Classes</a>.</div>`;
