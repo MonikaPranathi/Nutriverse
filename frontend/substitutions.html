@@ -14,6 +14,7 @@
 <nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
 
 <div class="container py-4" style="max-width: 620px;">
+  <a href="javascript:history.back()" class="text-muted small d-inline-block mb-3">&larr; Back</a>
   <h1 class="mb-1">No X? Use Y.</h1>
   <p class="text-muted mb-4">Look up a substitute for an ingredient you're out of, or share one you've discovered.</p>
 
@@ -42,7 +43,7 @@
 <script src="apiclient.js"></script>
 <script src="ingredient-icons.js"></script>
 <script>
-  nvRenderNavbar("subs");
+  nvRenderNavbar();
 
   function showBanner(message, type) {
     const b = document.getElementById("banner");

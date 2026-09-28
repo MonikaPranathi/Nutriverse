@@ -102,7 +102,7 @@ router.get('/classes', async (req, res) => {
 
         let sql = `
             SELECT DISTINCT c.id, c.title, c.category, c.budget, c.time_needed, c.taste,
-                   c.skill_level, c.meal_time, c.video_url, c.source_type,
+                   c.skill_level, c.meal_time, c.video_url, c.image_url, c.source_type,
                    c.prep_time_minutes, c.cook_time_minutes, c.servings,
                    c.uploader_id, c.status, c.created_at
             FROM classes c
@@ -343,28 +343,39 @@ router.post('/add-ingredient', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------
-// Multer setup — only used when source_type = 'native'
+// Multer setup — video is used when source_type = 'native'; image is
+// the optional dish photo, sent with either source_type.
 // ---------------------------------------------------------------------
 const uploadDir = path.join(__dirname, '..', 'uploads', 'classes');
+const imageUploadDir = path.join(__dirname, '..', 'uploads', 'images');
 fs.mkdirSync(uploadDir, { recursive: true });
+fs.mkdirSync(imageUploadDir, { recursive: true });
 
-const ALLOWED_MIME_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
-const MAX_BYTES = 100 * 1024 * 1024; // 100MB
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
+    destination: (req, file, cb) => {
+        cb(null, file.fieldname === 'image' ? imageUploadDir : uploadDir);
+    },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
-        cb(null, `class_${randomUUID()}${ext}`);
+        const prefix = file.fieldname === 'image' ? 'dish' : 'class';
+        cb(null, `${prefix}_${randomUUID()}${ext}`);
     },
 });
 
 const upload = multer({
     storage,
-    limits: { fileSize: MAX_BYTES },
+    limits: { fileSize: Math.max(MAX_VIDEO_BYTES, MAX_IMAGE_BYTES) },
     fileFilter: (req, file, cb) => {
-        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+        if (file.fieldname === 'video' && !ALLOWED_VIDEO_TYPES.includes(file.mimetype)) {
             return cb(new Error('Unsupported video format. Use mp4, mov, or webm.'));
+        }
+        if (file.fieldname === 'image' && !ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+            return cb(new Error('Unsupported image format. Use jpg, png, or webp.'));
         }
         cb(null, true);
     },
@@ -372,15 +383,20 @@ const upload = multer({
 
 // ---------------------------------------------------------------------
 // POST /api/upload-class
+// Multipart fields: "video" (file, required if source_type=native) and
+// "image" (file, optional dish photo, any source_type).
 // ---------------------------------------------------------------------
 router.post('/upload-class', (req, res, next) => {
-    upload.single('video')(req, res, (err) => {
+    upload.fields([{ name: 'video', maxCount: 1 }, { name: 'image', maxCount: 1 }])(req, res, (err) => {
         if (err) {
             return respond(res, false, err.message, null, 400);
         }
         next();
     });
 }, async (req, res) => {
+    const videoFile = req.files && req.files.video ? req.files.video[0] : null;
+    const imageFile = req.files && req.files.image ? req.files.image[0] : null;
+
     const {
         title,
         category,
@@ -405,48 +421,65 @@ router.post('/upload-class', (req, res, next) => {
     const uploaderId = parseInt(req.body.uploader_id, 10);
     const cleanTitle = (title || '').trim();
 
+    // Clean up any uploaded files if validation fails partway through,
+    // so a rejected submission doesn't leave orphaned files on disk.
+    function cleanupUploadedFiles() {
+        if (videoFile) fs.unlink(videoFile.path, () => {});
+        if (imageFile) fs.unlink(imageFile.path, () => {});
+    }
+
     if (!uploaderId || !cleanTitle) {
-        if (req.file) fs.unlink(req.file.path, () => {});
+        cleanupUploadedFiles();
         return respond(res, false, 'uploader_id and title are required.', null, 400);
     }
     if (!VALID_CATEGORIES.includes(category)) {
-        if (req.file) fs.unlink(req.file.path, () => {});
+        cleanupUploadedFiles();
         return respond(res, false, `category must be one of: ${VALID_CATEGORIES.join(', ')}`, null, 400);
     }
     if (!VALID_SOURCE_TYPES.includes(sourceType)) {
-        if (req.file) fs.unlink(req.file.path, () => {});
+        cleanupUploadedFiles();
         return respond(res, false, `source_type must be one of: ${VALID_SOURCE_TYPES.join(', ')}`, null, 400);
     }
     if (budget && !VALID_BUDGETS.includes(budget)) {
+        cleanupUploadedFiles();
         return respond(res, false, `budget must be one of: ${VALID_BUDGETS.join(', ')}`, null, 400);
     }
     if (timeNeeded && !VALID_TIME_NEEDED.includes(timeNeeded)) {
+        cleanupUploadedFiles();
         return respond(res, false, `time_needed must be one of: ${VALID_TIME_NEEDED.join(', ')}`, null, 400);
     }
     if (taste && !VALID_TASTES.includes(taste)) {
+        cleanupUploadedFiles();
         return respond(res, false, `taste must be one of: ${VALID_TASTES.join(', ')}`, null, 400);
     }
     if (skillLevel && !VALID_SKILL_LEVELS.includes(skillLevel)) {
+        cleanupUploadedFiles();
         return respond(res, false, `skill_level must be one of: ${VALID_SKILL_LEVELS.join(', ')}`, null, 400);
     }
     if (mealTime && !VALID_MEAL_TIMES.includes(mealTime)) {
+        cleanupUploadedFiles();
         return respond(res, false, `meal_time must be one of: ${VALID_MEAL_TIMES.join(', ')}`, null, 400);
     }
 
     let videoUrl;
     if (sourceType === 'native') {
-        if (!req.file) {
+        if (!videoFile) {
+            cleanupUploadedFiles();
             return respond(res, false, 'A video file is required when source_type is "native".', null, 400);
         }
-        videoUrl = path.join('uploads', 'classes', req.file.filename).replace(/\\/g, '/');
+        videoUrl = path.join('uploads', 'classes', videoFile.filename).replace(/\\/g, '/');
     } else {
         const providedUrl = (req.body.video_url || '').trim();
         if (!providedUrl) {
-            if (req.file) fs.unlink(req.file.path, () => {});
+            cleanupUploadedFiles();
             return respond(res, false, 'video_url is required when source_type is "youtube" or "external".', null, 400);
         }
         videoUrl = providedUrl;
     }
+
+    const imageUrl = imageFile
+        ? path.join('uploads', 'images', imageFile.filename).replace(/\\/g, '/')
+        : null;
 
     const conn = await pool.getConnection();
     try {
@@ -456,9 +489,9 @@ router.post('/upload-class', (req, res, next) => {
             `INSERT INTO classes
                 (title, category, budget, time_needed, taste, skill_level,
                  meal_time, video_url, source_type, uploader_id, status,
-                 prep_time_minutes, cook_time_minutes, servings)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
-            [cleanTitle, category, budget, timeNeeded, taste, skillLevel, mealTime, videoUrl, sourceType, uploaderId, prepTimeMinutes, cookTimeMinutes, servings]
+                 prep_time_minutes, cook_time_minutes, servings, image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+            [cleanTitle, category, budget, timeNeeded, taste, skillLevel, mealTime, videoUrl, sourceType, uploaderId, prepTimeMinutes, cookTimeMinutes, servings, imageUrl]
         );
         const classId = result.insertId;
 
@@ -544,7 +577,7 @@ router.post('/upload-class', (req, res, next) => {
         return respond(res, true, 'Class submitted and pending review.', { class_id: classId }, 201);
     } catch (err) {
         await conn.rollback();
-        if (req.file) fs.unlink(req.file.path, () => {});
+        cleanupUploadedFiles();
         console.error(err);
         return respond(res, false, 'Upload failed while saving to the database.', null, 500);
     } finally {
@@ -612,6 +645,229 @@ router.post('/like-class', async (req, res) => {
         return respond(res, false, 'Failed to record like.', null, 500);
     } finally {
         conn.release();
+    }
+});
+
+// ---------------------------------------------------------------------
+// GET /api/classes/:id
+//
+// Closes a gap flagged in Member 4's apiclient.js: classdetail.html was
+// fetching the entire approved list and filtering client-side because
+// this didn't exist. Returns everything the detail page needs in one
+// call: full class fields, ingredients (with quantity/unit where set),
+// moods, cuisines, allergens, and ordered steps.
+// ---------------------------------------------------------------------
+router.get('/classes/:id', async (req, res) => {
+    const classId = parseInt(req.params.id, 10);
+
+    if (!classId) {
+        return respond(res, false, 'A valid class id is required.', null, 400);
+    }
+
+    try {
+        const [classRows] = await pool.query(
+            `SELECT id, title, category, budget, time_needed, taste, skill_level,
+                    meal_time, video_url, image_url, source_type, prep_time_minutes,
+                    cook_time_minutes, servings, uploader_id, status, created_at
+             FROM classes WHERE id = ?`,
+            [classId]
+        );
+
+        if (classRows.length === 0) {
+            return respond(res, false, 'Class not found.', null, 404);
+        }
+
+        const [ingredients, moods, cuisines, allergens, steps] = await Promise.all([
+            pool.query(
+                `SELECT i.name, ci.quantity, ci.unit
+                 FROM class_ingredients ci JOIN ingredients i ON i.id = ci.ingredient_id
+                 WHERE ci.class_id = ? ORDER BY i.name ASC`,
+                [classId]
+            ).then(([rows]) => rows),
+            pool.query(
+                `SELECT m.name FROM class_moods cm JOIN moods m ON m.id = cm.mood_id
+                 WHERE cm.class_id = ? ORDER BY m.name ASC`,
+                [classId]
+            ).then(([rows]) => rows.map((r) => r.name)),
+            pool.query(
+                `SELECT cu.name FROM class_cuisines ccu JOIN cuisines cu ON cu.id = ccu.cuisine_id
+                 WHERE ccu.class_id = ? ORDER BY cu.name ASC`,
+                [classId]
+            ).then(([rows]) => rows.map((r) => r.name)),
+            pool.query(
+                `SELECT a.name FROM class_allergens ca JOIN allergens a ON a.id = ca.allergen_id
+                 WHERE ca.class_id = ? ORDER BY a.name ASC`,
+                [classId]
+            ).then(([rows]) => rows.map((r) => r.name)),
+            pool.query(
+                'SELECT step_number, instruction FROM class_steps WHERE class_id = ? ORDER BY step_number ASC',
+                [classId]
+            ).then(([rows]) => rows),
+        ]);
+
+        return respond(res, true, 'Class retrieved.', {
+            ...classRows[0],
+            ingredients: ingredients.map((i) => ({
+                name: i.name,
+                quantity: i.quantity,
+                unit: i.unit,
+            })),
+            moods,
+            cuisines,
+            allergens,
+            steps,
+        });
+    } catch (err) {
+        console.error(err);
+        return respond(res, false, 'Failed to retrieve class.', null, 500);
+    }
+});
+
+// ---------------------------------------------------------------------
+// GET /api/my-uploads?user_id=1
+//
+// Closes a gap flagged in userdashboard.html: it was fetching pending +
+// approved + rejected classes and filtering client-side by uploader_id.
+// This does the filtering in the query instead.
+// ---------------------------------------------------------------------
+router.get('/my-uploads', async (req, res) => {
+    const userId = parseInt(req.query.user_id, 10);
+
+    if (!userId) {
+        return respond(res, false, 'user_id is required.', null, 400);
+    }
+
+    try {
+        const [rows] = await pool.query(
+            `SELECT id, title, category, meal_time, video_url, image_url,
+                    source_type, status, created_at
+             FROM classes
+             WHERE uploader_id = ?
+             ORDER BY created_at DESC`,
+            [userId]
+        );
+        return respond(res, true, 'Your uploads retrieved.', rows);
+    } catch (err) {
+        console.error(err);
+        return respond(res, false, 'Failed to retrieve your uploads.', null, 500);
+    }
+});
+
+// ---------------------------------------------------------------------
+// GET /api/liked-classes?user_id=1
+//
+// Closes a gap flagged in userdashboard.html: POST /api/like-class could
+// record a like but nothing could list them back for the "Saved classes"
+// tab. (Separately, /api/favorites from the social.js feature set covers
+// a similar "save for later" idea — worth the team deciding whether likes
+// and favorites should eventually be the same concept or stay distinct.)
+// ---------------------------------------------------------------------
+router.get('/liked-classes', async (req, res) => {
+    const userId = parseInt(req.query.user_id, 10);
+
+    if (!userId) {
+        return respond(res, false, 'user_id is required.', null, 400);
+    }
+
+    try {
+        const [rows] = await pool.query(
+            `SELECT c.id, c.title, c.category, c.meal_time, c.video_url, c.image_url,
+                    c.source_type, ul.liked_at
+             FROM user_likes ul
+             JOIN classes c ON c.id = ul.class_id
+             WHERE ul.user_id = ?
+             ORDER BY ul.liked_at DESC`,
+            [userId]
+        );
+        return respond(res, true, 'Liked classes retrieved.', rows);
+    } catch (err) {
+        console.error(err);
+        return respond(res, false, 'Failed to retrieve liked classes.', null, 500);
+    }
+});
+
+// ---------------------------------------------------------------------
+// PATCH /api/classes/:id
+//
+// Edit an already-submitted class. Supports every editable field
+// including image_url and video_url directly as a URL string — no file
+// upload needed to attach a photo or fix a video link, same as how
+// upload-class already accepts external video URLs.
+//
+// Body: any subset of:
+//   title, category, budget, time_needed, taste, skill_level, meal_time,
+//   video_url, image_url, source_type, prep_time_minutes,
+//   cook_time_minutes, servings
+//
+// Only the fields provided are changed; everything else stays as-is.
+// ---------------------------------------------------------------------
+const EDITABLE_CLASS_FIELDS = [
+    'title', 'category', 'budget', 'time_needed', 'taste', 'skill_level',
+    'meal_time', 'video_url', 'image_url', 'source_type',
+    'prep_time_minutes', 'cook_time_minutes', 'servings',
+];
+
+router.patch('/classes/:id', async (req, res) => {
+    const classId = parseInt(req.params.id, 10);
+
+    if (!classId) {
+        return respond(res, false, 'A valid class id is required.', null, 400);
+    }
+
+    if (req.body.category && !VALID_CATEGORIES.includes(req.body.category)) {
+        return respond(res, false, `category must be one of: ${VALID_CATEGORIES.join(', ')}`, null, 400);
+    }
+    if (req.body.source_type && !VALID_SOURCE_TYPES.includes(req.body.source_type)) {
+        return respond(res, false, `source_type must be one of: ${VALID_SOURCE_TYPES.join(', ')}`, null, 400);
+    }
+    if (req.body.budget && !VALID_BUDGETS.includes(req.body.budget)) {
+        return respond(res, false, `budget must be one of: ${VALID_BUDGETS.join(', ')}`, null, 400);
+    }
+    if (req.body.time_needed && !VALID_TIME_NEEDED.includes(req.body.time_needed)) {
+        return respond(res, false, `time_needed must be one of: ${VALID_TIME_NEEDED.join(', ')}`, null, 400);
+    }
+    if (req.body.taste && !VALID_TASTES.includes(req.body.taste)) {
+        return respond(res, false, `taste must be one of: ${VALID_TASTES.join(', ')}`, null, 400);
+    }
+    if (req.body.skill_level && !VALID_SKILL_LEVELS.includes(req.body.skill_level)) {
+        return respond(res, false, `skill_level must be one of: ${VALID_SKILL_LEVELS.join(', ')}`, null, 400);
+    }
+    if (req.body.meal_time && !VALID_MEAL_TIMES.includes(req.body.meal_time)) {
+        return respond(res, false, `meal_time must be one of: ${VALID_MEAL_TIMES.join(', ')}`, null, 400);
+    }
+
+    const updates = [];
+    const params = [];
+    for (const field of EDITABLE_CLASS_FIELDS) {
+        if (req.body[field] !== undefined) {
+            updates.push(`${field} = ?`);
+            params.push(req.body[field]);
+        }
+    }
+
+    if (updates.length === 0) {
+        return respond(res, false, 'No editable fields provided.', null, 400);
+    }
+
+    params.push(classId);
+
+    try {
+        const [result] = await pool.query(
+            `UPDATE classes SET ${updates.join(', ')} WHERE id = ?`,
+            params
+        );
+
+        if (result.affectedRows === 0) {
+            return respond(res, false, 'Class not found.', null, 404);
+        }
+
+        return respond(res, true, 'Class updated.', {
+            id: classId,
+            updated_fields: Object.keys(req.body).filter((f) => EDITABLE_CLASS_FIELDS.includes(f)),
+        });
+    } catch (err) {
+        console.error(err);
+        return respond(res, false, 'Failed to update class.', null, 500);
     }
 });
 
