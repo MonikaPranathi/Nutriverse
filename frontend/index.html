@@ -22,17 +22,25 @@
 
   <div id="error-banner" class="alert alert-warning d-none"></div>
 
-  <div id="tip-banner"></div>
+  <div id="tip-flashcard-slot"></div>
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h4 class="nv-heading mb-0" id="feed-heading">Latest classes</h4>
-    <a href="classlisting.html" class="small">See all &rarr;</a>
-  </div>
+  <div class="row g-4">
+    <main class="col-lg-8">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h4 class="nv-heading mb-0" id="feed-heading">Latest classes</h4>
+        <a href="classlisting.html" class="small">See all &rarr;</a>
+      </div>
 
-  <div id="feed-grid" class="nv-masonry"></div>
-  <div id="empty-state" class="nv-empty-state d-none">
-    <h5>Nothing here yet</h5>
-    <p class="mb-0">Check back soon, or <a href="classlisting.html">browse all classes</a>.</p>
+      <div id="feed-grid" class="nv-masonry"></div>
+      <div id="empty-state" class="nv-empty-state d-none">
+        <h5>Nothing here yet</h5>
+        <p class="mb-0">Check back soon, or <a href="classlisting.html">browse all classes</a>.</p>
+      </div>
+    </main>
+
+    <aside class="col-lg-4">
+      <div id="seasonal-widget"></div>
+    </aside>
   </div>
 </div>
 
@@ -119,23 +127,86 @@
       }
     }
 
+    // ---- Tip of the day, as a tap-to-flip flashcard. Click flips it
+    // over to read the tip, click again to flip back.
+    function loadTipFlashcard() {
+      nvGetTipOfDay().then((tip) => {
+        if (!tip) return;
+        const slot = document.getElementById("tip-flashcard-slot");
+        slot.innerHTML = `
+          <div class="nv-flashcard" id="tip-flashcard">
+            <div class="nv-flashcard-inner" id="tip-flashcard-inner">
+              <div class="nv-flashcard-face nv-flashcard-front">
+                <span class="icon">💡</span>
+                <div class="fw-semibold">Tip of the day</div>
+                <div class="text-muted small">Tap to reveal</div>
+              </div>
+              <div class="nv-flashcard-face nv-flashcard-back">
+                <span class="nv-tip-type-badge">${nvLabel("tip_type", tip.tip_type)}</span>
+                <div>${tip.tip_text}</div>
+              </div>
+            </div>
+          </div>`;
+
+        document.getElementById("tip-flashcard-inner").addEventListener("click", () => {
+          document.getElementById("tip-flashcard-inner").classList.toggle("flipped");
+        });
+      }).catch(() => {});
+    }
+
+    // ---- What's in season, plus a few recipes that use it. Seasonal
+    // produce is fresher, cheaper, and generally better for you than
+    // out-of-season substitutes — worth surfacing right on the feed.
+    const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    async function loadSeasonalWidget() {
+      const widget = document.getElementById("seasonal-widget");
+      const month = new Date().getMonth() + 1;
+      widget.innerHTML = `<div class="text-muted small">Loading what's in season…</div>`;
+      try {
+        const result = await nvGetSeasonalIngredients(month);
+        if (result.ingredients.length === 0) {
+          widget.innerHTML = `
+            <div class="nv-card p-3">
+              <h6 class="nv-heading mb-1">In season — ${MONTH_NAMES[month - 1]}</h6>
+              <p class="text-muted small mb-0">Nothing tagged for this month yet.</p>
+            </div>`;
+          return;
+        }
+
+        widget.innerHTML = `
+          <div class="nv-card p-3">
+            <h6 class="nv-heading mb-1">In season — ${MONTH_NAMES[month - 1]}</h6>
+            <p class="text-muted small mb-3">Fresher, cheaper, and generally better for you right now.</p>
+            <div class="nv-pill-picker mb-3">
+              ${result.ingredients.map((i) => `<span class="nv-chip">${nvIngredientIcon(i.name)} ${i.name}</span>`).join("")}
+            </div>
+            <div class="fw-semibold small mb-1">Recipes using what's in season</div>
+            <div id="seasonal-recipes"><span class="text-muted small">Loading…</span></div>
+          </div>`;
+
+        const names = result.ingredients.map((i) => i.name);
+        const matches = await nvMatchIngredients(names);
+        const top = matches.slice(0, 5);
+        document.getElementById("seasonal-recipes").innerHTML = top.length === 0
+          ? `<p class="text-muted small mb-0">No recipes tagged with these yet.</p>`
+          : top.map((m) => `
+              <a href="classdetail.html?id=${m.class_id}" class="text-decoration-none">
+                <div class="nv-sub-row">
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold" style="color:var(--ink);font-size:0.9rem;">${m.title}</div>
+                    <div class="text-muted small">${m.match_count} seasonal ingredient${m.match_count === 1 ? "" : "s"}</div>
+                  </div>
+                </div>
+              </a>`).join("");
+      } catch (err) {
+        widget.innerHTML = `<div class="nv-card p-3 text-muted small">Couldn't load what's in season.</div>`;
+      }
+    }
+
     setupHeroAndNav();
     loadFeed();
-
-    // Tip of the day — small taste of tips.js's rotating tip on the
-    // home feed, with a link through to the full tips page.
-    nvGetTipOfDay().then((tip) => {
-      if (!tip) return;
-      document.getElementById("tip-banner").innerHTML = `
-        <div class="nv-tip-banner">
-          <span class="icon">💡</span>
-          <div>
-            <span class="nv-tip-type-badge">${nvLabel("tip_type", tip.tip_type) || tip.tip_type}</span>
-            <div>${tip.tip_text}</div>
-            <a href="tips.html" class="small">More tips &rarr;</a>
-          </div>
-        </div>`;
-    }).catch(() => {});
+    loadTipFlashcard();
+    loadSeasonalWidget();
   }
 </script>
 </body>

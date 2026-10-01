@@ -255,6 +255,14 @@ function nvAddIngredient(name) {
     body: JSON.stringify({ name }),
   });
 }
+// POST /api/match-ingredients  { ingredients: string[], meal_time?, category? }
+function nvMatchIngredients(ingredients, extra = {}) {
+  return nvApi("/match-ingredients", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ingredients, ...extra }),
+  });
+}
 
 // ---- social.js: favorites + reviews ----
 function nvFavoriteClass(userId, classId) {
@@ -448,7 +456,6 @@ const NV_NAV_LINKS = [
   { href: "index.html", label: "Home", key: "home" },
   { href: "classlisting.html", label: "Classes", key: "classes" },
   { href: "ingredientmatch.html", label: "Ingredient Match", key: "match" },
-  { href: "substitutions.html", label: "Substitutions", key: "subs" },
   { href: "upload.html", label: "Upload", key: "upload" },
   { href: "planner.html", label: "Planner", key: "planner" },
   { href: "cookbooks.html", label: "Cookbooks", key: "cookbooks" },

@@ -63,6 +63,38 @@
       </ol>`;
   }
 
+  // Don't have one of this recipe's ingredients? Look up a swap for each
+  // one, right here, instead of sending people to a separate page.
+  async function loadSubstitutions(ingredientNames) {
+    const slot = document.getElementById("substitutions-slot");
+    if (!ingredientNames || ingredientNames.length === 0) return;
+    try {
+      const results = await Promise.all(ingredientNames.map((name) => nvGetSubstitutions(name).catch(() => null)));
+      const withSubs = results.filter((r) => r && r.substitutes.length > 0);
+      if (withSubs.length === 0) {
+        slot.innerHTML = `
+          <p class="text-muted small mt-2 mb-0">
+            No swaps logged for these yet. <a href="substitutions.html">Know one? Add it.</a>
+          </p>`;
+        return;
+      }
+      slot.innerHTML = `
+        <div class="nv-card p-3 mt-3">
+          <div class="fw-semibold mb-2">Don't have something?</div>
+          ${withSubs.map((r) => r.substitutes.map((s) => `
+            <div class="nv-sub-row">
+              <span>${nvIngredientIcon(r.ingredient)} ${r.ingredient}</span>
+              <span class="nv-sub-arrow">&rarr;</span>
+              <span>${nvIngredientIcon(s.name)} ${s.name}</span>
+              ${s.notes ? `<span class="text-muted small ms-2">(${s.notes})</span>` : ""}
+            </div>`).join("")).join("")}
+          <a href="substitutions.html" class="small d-inline-block mt-2">Know another swap? Add it &rarr;</a>
+        </div>`;
+    } catch (err) {
+      // Non-critical — just skip the section quietly.
+    }
+  }
+
   function wasteNotHtml(chain) {
     if (!chain || !chain.suggestions || chain.suggestions.length === 0) return "";
     return `
@@ -184,6 +216,7 @@
 
           <h5 class="nv-section-title mb-3">What you'll need</h5>
           <div id="ingredients-slot"><span class="text-muted small">Loading…</span></div>
+          <div id="substitutions-slot"></div>
           <div id="steps-slot"></div>
           <div id="waste-not-slot"></div>
 
@@ -256,6 +289,7 @@
         ? nvIngredientChipsHtml(chain.leftovers)
         : `<p class="text-muted small">No ingredients tagged on this class yet.</p>`;
       document.getElementById("waste-not-slot").innerHTML = wasteNotHtml(chain);
+      loadSubstitutions(chain.leftovers);
     }).catch(() => {
       document.getElementById("ingredients-slot").innerHTML = `<p class="text-muted small">Couldn't load ingredients.</p>`;
     });

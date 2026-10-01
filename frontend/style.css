@@ -96,9 +96,8 @@ a:hover > .nv-card,
 
 .nv-card-thumb {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  height: 220px;
   object-fit: cover;
-  background: #EFE7D4;
   display: block;
 }
 /* Placeholder "photo" used when a class has no real dish image yet */
@@ -106,6 +105,7 @@ a:hover > .nv-card,
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 60px;
 }
 .nv-card-art span { font-size: 3.2rem; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.12)); }
 
@@ -389,3 +389,59 @@ a:hover > .nv-card,
 .nv-review-card { border-bottom: 1px solid var(--border); padding: 1rem 0; }
 .nv-review-card:last-child { border-bottom: none; }
 .nv-review-photo { max-width: 160px; border-radius: 10px; margin-top: 0.5rem; }
+
+/* ---- Tip-of-the-day flashcard (home page) ---- */
+.nv-flashcard {
+  max-width: 480px;
+  height: 132px;
+  margin-bottom: 1.75rem;
+  perspective: 1200px;
+}
+.nv-flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+}
+.nv-flashcard-inner.flipped { transform: rotateY(180deg); }
+.nv-flashcard-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.nv-flashcard-front {
+  background: linear-gradient(135deg, #FBF1E0, #F6E3C4);
+  align-items: flex-start;
+}
+.nv-flashcard-front .icon { font-size: 1.6rem; margin-bottom: 0.35rem; }
+.nv-flashcard-back {
+  background: #fff;
+  transform: rotateY(180deg);
+  overflow-y: auto;
+}
+.nv-youtube-thumb {
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+  position: relative;
+}
+
+.nv-youtube-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.nv-thumb-fallback {
+  width: 100%;
+  height: 100%;
+}
