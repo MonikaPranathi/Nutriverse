@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meal Planner — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
+
+<div class="container py-4">
+  <h1 class="mb-1">Meal planner</h1>
+  <p class="text-muted mb-4">Plan a week of classes, then pull a shopping list from it.</p>
+
+  <div id="login-warning" class="alert alert-warning d-none">
+    <a href="login.html">Log in</a> to plan your meals.
+  </div>
+
+  <div id="planner-root" class="d-none">
+    <div class="nv-subtabs">
+      <button class="active" data-tab="week">This week</button>
+      <button data-tab="shopping">Shopping list</button>
+    </div>
+
+    <div id="banner" class="alert d-none"></div>
+
+    <div id="pane-week" class="planner-pane">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <button class="btn btn-sm btn-outline-secondary" id="prev-week">&larr; Prev</button>
+        <span class="fw-semibold" id="week-label"></span>
+        <button class="btn btn-sm btn-outline-secondary" id="next-week">Next &rarr;</button>
+      </div>
+      <div class="nv-planner-grid mb-2" id="grid-heads"></div>
+      <div class="nv-planner-grid" id="grid-body"></div>
+    </div>
+
+    <div id="pane-shopping" class="planner-pane d-none">
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+          <label class="form-label small mb-0">From</label>
+          <input type="date" class="form-control form-control-sm" id="shop-start">
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-0">To</label>
+          <input type="date" class="form-control form-control-sm" id="shop-end">
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-sm btn-nv-primary" id="shop-generate">Generate list</button>
+        </div>
+      </div>
+      <div id="shopping-list" class="nv-card p-3"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pick a class for a slot -->
+<div class="modal fade" id="pickModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Pick a class</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" class="form-control mb-3" id="pick-search" placeholder="Search classes…">
+        <div id="pick-results" style="max-height: 320px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  nvRenderNavbar("planner");
+  const user = nvGetCurrentUser();
+  const MEAL_TIMES = ["morning", "afternoon", "evening", "night"];
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  if (!user) {
+    document.getElementById("login-warning").classList.remove("d-none");
+  } else {
+    document.getElementById("planner-root").classList.remove("d-none");
+  }
+
+  function showBanner(message, type) {
+    const b = document.getElementById("banner");
+    b.textContent = message;
+    b.className = `alert alert-${type}`;
+  }
+
+  document.querySelectorAll(".nv-subtabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nv-subtabs button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".planner-pane").forEach((p) => p.classList.add("d-none"));
+      document.getElementById(`pane-${btn.dataset.tab}`).classList.remove("d-none");
+    });
+  });
+
+  function fmtDate(d) { return d.toISOString().split("T")[0]; }
+  function startOfWeek(d) {
+    const copy = new Date(d);
+    copy.setDate(copy.getDate() - copy.getDay());
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+
+  let weekStart = startOfWeek(new Date());
+  let planEntries = {}; // key: `${date}_${mealTime}` -> {class_id, title}
+  let pendingSlot = null;
+
+  function weekDates() {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }
+
+  function renderGridHeads() {
+    const dates = weekDates();
+    document.getElementById("week-label").textContent =
+      `${dates[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${dates[6].toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+    document.getElementById("grid-heads").innerHTML =
+      `<div></div>` + dates.map((d) => `<div class="nv-planner-day-head">${DAY_NAMES[d.getDay()]}<br><span class="text-muted" style="font-weight:400;font-size:0.75rem;">${d.getDate()}</span></div>`).join("");
+  }
+
+  function renderGridBody() {
+    const dates = weekDates();
+    const body = document.getElementById("grid-body");
+    body.innerHTML = "";
+    MEAL_TIMES.forEach((mealTime) => {
+      const label = document.createElement("div");
+      label.className = "nv-slot-label";
+      label.textContent = nvLabel("meal_time", mealTime);
+      body.appendChild(label);
+
+      dates.forEach((d) => {
+        const dateStr = fmtDate(d);
+        const key = `${dateStr}_${mealTime}`;
+        const entry = planEntries[key];
+        const cell = document.createElement("div");
+        cell.className = "nv-planner-cell" + (entry ? " filled" : "");
+        cell.innerHTML = entry
+          ? `${entry.title}<span class="remove-x" data-key="${key}" data-date="${dateStr}" data-meal="${mealTime}">&times;</span>`
+          : `<span class="text-muted">+ add</span>`;
+        cell.addEventListener("click", (e) => {
+          if (e.target.classList.contains("remove-x")) return;
+          openPicker(dateStr, mealTime);
+        });
+        body.appendChild(cell);
+      });
+    });
+
+    body.querySelectorAll(".remove-x").forEach((x) => {
+      x.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        try {
+          await nvDeleteMealPlanEntry(user.id, x.dataset.date, x.dataset.meal);
+          delete planEntries[`${x.dataset.date}_${x.dataset.meal}`];
+          renderGridBody();
+        } catch (err) {
+          showBanner(err.message, "warning");
+        }
+      });
+    });
+  }
+
+  async function loadWeek() {
+    renderGridHeads();
+    const dates = weekDates();
+    try {
+      const rows = await nvGetMealPlan(user.id, fmtDate(dates[0]), fmtDate(dates[6]));
+      planEntries = {};
+      rows.forEach((r) => {
+        const dateStr = r.plan_date.split("T")[0];
+        planEntries[`${dateStr}_${r.meal_time}`] = { class_id: r.class_id, title: r.title };
+      });
+      renderGridBody();
+    } catch (err) {
+      showBanner(err.message, "warning");
+    }
+  }
+
+  document.getElementById("prev-week").addEventListener("click", () => {
+    weekStart.setDate(weekStart.getDate() - 7);
+    loadWeek();
+  });
+  document.getElementById("next-week").addEventListener("click", () => {
+    weekStart.setDate(weekStart.getDate() + 7);
+    loadWeek();
+  });
+
+  const pickModal = new bootstrap.Modal(document.getElementById("pickModal"));
+  function openPicker(dateStr, mealTime) {
+    pendingSlot = { dateStr, mealTime };
+    document.getElementById("pick-search").value = "";
+    document.getElementById("pick-results").innerHTML = `<div class="text-muted small">Type to search, or browse recent classes below.</div>`;
+    searchClasses("");
+    pickModal.show();
+  }
+
+  let searchTimer;
+  document.getElementById("pick-search").addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => searchClasses(e.target.value), 250);
+  });
+
+  async function searchClasses(query) {
+    try {
+      const classes = await nvGetClasses({ status: "approved", search: query });
+      const list = document.getElementById("pick-results");
+      if (classes.length === 0) {
+        list.innerHTML = `<div class="text-muted small">No matches.</div>`;
+        return;
+      }
+      list.innerHTML = classes.slice(0, 30).map((c) => `
+        <div class="nv-sub-row" style="cursor:pointer;" data-id="${c.id}" data-title="${c.title.replace(/"/g, '&quot;')}">
+          <div class="flex-grow-1">
+            <div class="fw-semibold">${c.title}</div>
+            <div class="text-muted small">${nvLabel("meal_time", c.meal_time)} &middot; ${nvLabel("category", c.category)}</div>
+          </div>
+        </div>`).join("");
+      list.querySelectorAll("[data-id]").forEach((row) => {
+        row.addEventListener("click", async () => {
+          try {
+            await nvSetMealPlanEntry(user.id, pendingSlot.dateStr, pendingSlot.mealTime, row.dataset.id);
+            planEntries[`${pendingSlot.dateStr}_${pendingSlot.mealTime}`] = { class_id: row.dataset.id, title: row.dataset.title };
+            renderGridBody();
+            pickModal.hide();
+          } catch (err) {
+            showBanner(err.message, "warning");
+          }
+        });
+      });
+    } catch (err) {
+      document.getElementById("pick-results").innerHTML = `<div class="text-warning small">${err.message}</div>`;
+    }
+  }
+
+  // ---- Shopping list ----
+  function defaultShoppingRange() {
+    const dates = weekDates();
+    document.getElementById("shop-start").value = fmtDate(dates[0]);
+    document.getElementById("shop-end").value = fmtDate(dates[6]);
+  }
+
+  async function generateShoppingList() {
+    const start = document.getElementById("shop-start").value;
+    const end = document.getElementById("shop-end").value;
+    if (!start || !end) { showBanner("Pick a date range first.", "warning"); return; }
+    const listEl = document.getElementById("shopping-list");
+    listEl.innerHTML = `<div class="text-muted">Loading…</div>`;
+    try {
+      const result = await nvGetShoppingList(user.id, start, end);
+      if (result.items.length === 0) {
+        listEl.innerHTML = `<div class="nv-empty-state">Nothing planned for this range yet.</div>`;
+        return;
+      }
+      listEl.innerHTML = result.items.map((item) => `
+        <div class="nv-shop-item">
+          <div>
+            <div>${nvIngredientIcon(item.name)} ${item.name}${item.partially_unspecified ? ` <span class="text-muted small">(some amounts missing)</span>` : ""}</div>
+            <div class="text-muted small">For: ${item.needed_for.join(", ")}</div>
+          </div>
+          <span class="amount">${item.amount}</span>
+        </div>`).join("");
+    } catch (err) {
+      listEl.innerHTML = `<div class="alert alert-warning">${err.message}</div>`;
+    }
+  }
+  document.getElementById("shop-generate").addEventListener("click", generateShoppingList);
+
+  if (user) {
+    loadWeek();
+    defaultShoppingRange();
+  }
+</script>
+</body>
+</html>

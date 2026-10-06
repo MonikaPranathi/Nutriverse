@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cooking Tips — Nutriverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg nv-navbar sticky-top" id="nv-navbar-root"></nav>
+
+<div class="container py-4" style="max-width: 700px;">
+  <h1 class="mb-1">Cooking tips</h1>
+  <p class="text-muted mb-4">Storage tricks, mistake fixes, and swaps from the community.</p>
+
+  <div id="banner" class="alert d-none"></div>
+  <div id="tip-of-day-slot"></div>
+
+  <div class="nv-subtabs" id="type-tabs">
+    <button class="active" data-type="">All</button>
+    <button data-type="storage">Storage</button>
+    <button data-type="fix_mistake">Fix a mistake</button>
+    <button data-type="substitution">Substitution</button>
+    <button data-type="general">General</button>
+  </div>
+
+  <div id="tips-list"></div>
+
+  <div class="nv-form-section mt-4">
+    <h5>Add a tip</h5>
+    <textarea class="form-control mb-2" id="new-tip-text" rows="2" maxlength="500" placeholder="Share something you've learned…"></textarea>
+    <select class="form-select mb-2" id="new-tip-type" style="width:auto;"></select>
+    <button class="btn btn-nv-primary" id="new-tip-submit">Add tip</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="apiclient.js"></script>
+<script src="ingredient-icons.js"></script>
+<script>
+  nvRenderNavbar("tips");
+
+  function showBanner(message, type) {
+    const b = document.getElementById("banner");
+    b.textContent = message;
+    b.className = `alert alert-${type}`;
+  }
+
+  NV_ENUMS.tip_type.forEach((o) => {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    document.getElementById("new-tip-type").appendChild(opt);
+  });
+
+  nvGetTipOfDay().then((tip) => {
+    if (!tip) return;
+    document.getElementById("tip-of-day-slot").innerHTML = `
+      <div class="nv-tip-banner">
+        <span class="icon">💡</span>
+        <div>
+          <span class="nv-tip-type-badge">Tip of the day &middot; ${nvLabel("tip_type", tip.tip_type)}</span>
+          <div>${tip.tip_text}</div>
+        </div>
+      </div>`;
+  }).catch(() => {});
+
+  async function loadTips(type) {
+    const list = document.getElementById("tips-list");
+    list.innerHTML = `<div class="text-muted">Loading…</div>`;
+    try {
+      const tips = await nvGetTips(type || null);
+      list.innerHTML = tips.length === 0
+        ? `<p class="text-muted">No tips in this category yet.</p>`
+        : `<div class="nv-card">` + tips.map((t) => `
+            <div class="p-3 border-bottom">
+              <span class="nv-tip-type-badge">${nvLabel("tip_type", t.tip_type)}</span>
+              <div>${t.tip_text}</div>
+            </div>`).join("") + `</div>`;
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-warning">${err.message}</div>`;
+    }
+  }
+
+  document.querySelectorAll("#type-tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#type-tabs button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      loadTips(btn.dataset.type);
+    });
+  });
+
+  document.getElementById("new-tip-submit").addEventListener("click", async () => {
+    const text = document.getElementById("new-tip-text").value.trim();
+    if (!text) { showBanner("Write something first.", "warning"); return; }
+    try {
+      await nvAddTip(text, document.getElementById("new-tip-type").value);
+      showBanner("Tip added — thanks!", "success");
+      document.getElementById("new-tip-text").value = "";
+      loadTips(document.querySelector("#type-tabs button.active").dataset.type);
+    } catch (err) {
+      showBanner(err.message, "warning");
+    }
+  });
+
+  loadTips("");
+</script>
+</body>
+</html>

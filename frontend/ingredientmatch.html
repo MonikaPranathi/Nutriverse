@@ -215,6 +215,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="apiclient.js"></script>
 <script src="ingredient-icons.js"></script>
+
 <script>
   // Requires login, same as the rest of Member 3's pages.
   const user = nvGetCurrentUser();
@@ -222,9 +223,7 @@
     window.location.href = "login.html";
   }
 
-  // Curated common-ingredient list rendered as tap-to-select cards, so
-  // people don't have to type every ingredient by hand. Icons come from
-  // the existing nvIngredientIcon() lookup in ingredient-icons.js.
+  // Keep the existing Popular ingredients EXACTLY as they are.
   const COMMON_INGREDIENTS = [
     "Chicken", "Beef", "Egg", "Rice", "Paneer", "Tomato",
     "Onion", "Potato", "Garlic", "Ginger", "Oil", "Milk",
@@ -233,116 +232,322 @@
     "Bread", "Dal",
   ];
 
-  const selected = new Set(); // built-in-list selections, keyed by name
-  const customSelected = new Set(); // free-typed extras not in the grid
+  const selected = new Set();
+  const customSelected = new Set();
+
   let searchQuery = "";
+  let searchTimer = null;
+  let searchRequestId = 0;
+
+  // Database results currently displayed.
+  let databaseResults = [];
 
   function allSelectedNames() {
     return [...selected, ...customSelected];
   }
 
-  function renderGrid() {
+  // ------------------------------------------------------------
+  // Render ingredient cards
+  // ------------------------------------------------------------
+  function renderGrid(items = null) {
     const grid = document.getElementById("ingredient-grid");
     const noResults = document.getElementById("no-results");
+
     grid.innerHTML = "";
 
-    const q = searchQuery.trim().toLowerCase();
-    const visible = q
-      ? COMMON_INGREDIENTS.filter((n) => n.toLowerCase().includes(q))
-      : COMMON_INGREDIENTS;
+    const q = searchQuery.trim();
+
+    // Empty search = show Popular 26.
+    // Search = show database results.
+    const visible = q ? (items || databaseResults) : databaseResults;
 
     noResults.classList.toggle("d-none", visible.length > 0);
 
-    visible.forEach((name) => {
-      const isSelected = selected.has(name);
+    visible.forEach((ingredient) => {
+      // Popular items are strings.
+      // Database results are {id, name}.
+      const name = typeof ingredient === "string"
+        ? ingredient
+        : ingredient.name;
+
+      const isSelected =
+        selected.has(name) ||
+        [...selected].some(
+          (x) => x.toLowerCase() === name.toLowerCase()
+        );
+
       const box = document.createElement("div");
       box.className = "nv-ing-box" + (isSelected ? " selected" : "");
+
       box.innerHTML = `
         ${isSelected ? '<span class="check-badge">&#10003;</span>' : ""}
         <div class="icon-circle">${nvIngredientIcon(name)}</div>
-        <div class="label">${name}</div>`;
+        <div class="label">${name}</div>
+      `;
+
       box.addEventListener("click", () => {
-        if (selected.has(name)) {
-          selected.delete(name);
+        // Find existing selected name ignoring case.
+        const existingSelected = [...selected].find(
+          (x) => x.toLowerCase() === name.toLowerCase()
+        );
+
+        if (existingSelected) {
+          selected.delete(existingSelected);
         } else {
           selected.add(name);
         }
+
         renderAll();
       });
+
       grid.appendChild(box);
     });
   }
 
+  // ------------------------------------------------------------
+  // Search complete ingredients database
+  // ------------------------------------------------------------
+  // ------------------------------------------------------------
+// Load all ingredients for the initial page
+// ------------------------------------------------------------
+async function loadAllIngredients() {
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/ingredients?limit=500"
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to load ingredients.");
+    }
+
+    const result = await response.json();
+
+    if (result.success && Array.isArray(result.data)) {
+      databaseResults = result.data;
+    } else {
+      databaseResults = [];
+    }
+
+    renderGrid();
+
+  } catch (err) {
+    console.error("Failed to load all ingredients:", err);
+
+    const banner = document.getElementById("error-banner");
+    banner.textContent =
+      "Couldn't load ingredients. Make sure the backend is running on http://localhost:5000.";
+    banner.classList.remove("d-none");
+  }
+}
+  async function searchIngredients(query) {
+    const q = query.trim();
+
+    if (!q) {
+      databaseResults = [];
+      renderGrid();
+      return;
+    }
+
+    const requestId = ++searchRequestId;
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/ingredients?q=${encodeURIComponent(q)}&limit=50`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to search ingredients.");
+      }
+
+      const result = await response.json();
+
+      // Ignore an older request if a newer search has already happened.
+      if (requestId !== searchRequestId) {
+        return;
+      }
+
+      if (result.success && Array.isArray(result.data)) {
+        databaseResults = result.data;
+      } else {
+        databaseResults = [];
+      }
+
+      renderGrid(databaseResults);
+
+    } catch (err) {
+      console.error("Ingredient search error:", err);
+
+      if (requestId !== searchRequestId) {
+        return;
+      }
+
+      databaseResults = [];
+      renderGrid([]);
+
+      const banner = document.getElementById("error-banner");
+      banner.textContent =
+        "Couldn't search ingredients. Make sure the backend is running on http://localhost:5000.";
+      banner.classList.remove("d-none");
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Selected ingredient chips
+  // ------------------------------------------------------------
   function renderSelectedChips() {
     const section = document.getElementById("selected-section");
     const row = document.getElementById("selected-chips");
     const names = allSelectedNames();
+
     row.innerHTML = "";
 
     if (names.length === 0) {
       section.classList.add("d-none");
       return;
     }
+
     section.classList.remove("d-none");
 
     names.forEach((name) => {
       const chip = document.createElement("span");
       chip.className = "nv-selected-chip";
-      chip.innerHTML = `${nvIngredientIcon(name)} ${name} <span class="remove-x">&times;</span>`;
+
+      chip.innerHTML = `
+        ${nvIngredientIcon(name)}
+        ${name}
+        <span class="remove-x">&times;</span>
+      `;
+
       chip.querySelector(".remove-x").addEventListener("click", () => {
         selected.delete(name);
         customSelected.delete(name);
         renderAll();
       });
+
       row.appendChild(chip);
     });
   }
 
+  // ------------------------------------------------------------
+  // Continue button
+  // ------------------------------------------------------------
   function renderContinueButton() {
     const btn = document.getElementById("continue-btn");
     const count = allSelectedNames().length;
+
     document.getElementById("continue-count").textContent = count;
+
     btn.classList.toggle("d-none", count === 0);
   }
 
   function renderAll() {
-    renderGrid();
+    if (searchQuery.trim()) {
+      renderGrid(databaseResults);
+    } else {
+      renderGrid();
+    }
+
     renderSelectedChips();
     renderContinueButton();
   }
 
+  // ------------------------------------------------------------
+  // Clear all selected ingredients
+  // ------------------------------------------------------------
   document.getElementById("clear-all-btn").addEventListener("click", () => {
     selected.clear();
     customSelected.clear();
     renderAll();
   });
 
-  // The search box doubles as a live filter over the Popular grid, and —
-  // if you press Enter on something that isn't in the curated list — adds
-  // it as a custom selection (shown in "Selected" but not in the grid).
+  // ------------------------------------------------------------
+  // Search input
+  // ------------------------------------------------------------
   const searchInput = document.getElementById("ingredient-search");
+
   searchInput.addEventListener("input", (e) => {
     searchQuery = e.target.value;
-    renderGrid();
-  });
-  searchInput.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    const name = searchQuery.trim();
-    if (!name) return;
-    const inList = COMMON_INGREDIENTS.find((n) => n.toLowerCase() === name.toLowerCase());
-    if (inList) {
-      selected.add(inList);
-    } else {
-      customSelected.add(name);
+
+    const banner = document.getElementById("error-banner");
+    banner.classList.add("d-none");
+
+    clearTimeout(searchTimer);
+
+    const q = searchQuery.trim();
+
+    // Empty search = immediately return to Popular.
+    if (!q) {
+      searchRequestId++;
+      renderGrid();
+      return;
     }
+
+    // Small delay so we don't send an API request for every keystroke.
+    searchTimer = setTimeout(() => {
+      searchIngredients(q);
+    }, 250);
+  });
+
+  // Enter can select an exact database result.
+  searchInput.addEventListener("keydown", async (e) => {
+    if (e.key !== "Enter") return;
+
+    e.preventDefault();
+
+    const name = searchQuery.trim();
+
+    if (!name) return;
+
+    // If the exact ingredient is already in the database results,
+    // select that database ingredient.
+    const exactMatch = databaseResults.find(
+      (item) => item.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (exactMatch) {
+      selected.add(exactMatch.name);
+
+      searchQuery = "";
+      searchInput.value = "";
+      databaseResults = [];
+
+      renderAll();
+      return;
+    }
+
+    // Check Popular list as well.
+    const popularMatch = COMMON_INGREDIENTS.find(
+      (item) => item.toLowerCase() === name.toLowerCase()
+    );
+
+    if (popularMatch) {
+      selected.add(popularMatch);
+
+      searchQuery = "";
+      searchInput.value = "";
+      databaseResults = [];
+
+      renderAll();
+      return;
+    }
+
+    // If the user types something that isn't in the database,
+    // keep the old custom-selection behavior.
+    customSelected.add(name);
+
     searchQuery = "";
     searchInput.value = "";
+    databaseResults = [];
+
     renderAll();
   });
 
+  // ------------------------------------------------------------
+  // Optional filters
+  // ------------------------------------------------------------
   function fillOptional(id, field) {
     const el = document.getElementById(id);
+
     NV_ENUMS[field].forEach((o) => {
       const opt = document.createElement("option");
       opt.value = o.value;
@@ -350,14 +555,20 @@
       el.appendChild(opt);
     });
   }
+
   fillOptional("filter-meal-time", "meal_time");
   fillOptional("filter-category", "category");
 
+  // ------------------------------------------------------------
+  // Recipe results
+  // ------------------------------------------------------------
   function renderResults(matches) {
     document.getElementById("results-section").classList.remove("d-none");
+
     const heading = document.getElementById("results-heading");
     const list = document.getElementById("results-list");
     const empty = document.getElementById("empty-state");
+
     list.innerHTML = "";
 
     if (matches.length === 0) {
@@ -365,70 +576,104 @@
       empty.classList.remove("d-none");
       return;
     }
+
     empty.classList.add("d-none");
     heading.classList.remove("d-none");
-    heading.textContent = `${matches.length} class${matches.length === 1 ? "" : "es"} ranked by match`;
+
+    heading.textContent =
+      `${matches.length} class${matches.length === 1 ? "" : "es"} ranked by match`;
 
     matches.forEach((m) => {
       const pct = Math.round(m.match_score * 100);
+
       const row = document.createElement("a");
       row.href = `classdetail.html?id=${m.class_id}`;
       row.className = "text-decoration-none";
+
       row.innerHTML = `
         <div class="nv-card p-3 mb-2 d-flex align-items-center justify-content-between">
           <div>
             <div class="nv-heading">${m.title}</div>
-            <div class="text-muted small">${m.match_count} of ${m.total_required} ingredients matched</div>
+            <div class="text-muted small">
+              ${m.match_count} of ${m.total_required} ingredients matched
+            </div>
           </div>
-          <span class="badge btn-nv-accent" style="font-size:0.9rem;">${pct}%</span>
-        </div>`;
+          <span class="badge btn-nv-accent" style="font-size:0.9rem;">
+            ${pct}%
+          </span>
+        </div>
+      `;
+
       list.appendChild(row);
     });
 
-    document.getElementById("results-section").scrollIntoView({ behavior: "smooth", block: "start" });
+    document
+      .getElementById("results-section")
+      .scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
   }
 
+  // ------------------------------------------------------------
+  // Continue button
+  // ------------------------------------------------------------
   document.getElementById("continue-btn").addEventListener("click", async () => {
     const banner = document.getElementById("error-banner");
+
     banner.classList.add("d-none");
+
     const btn = document.getElementById("continue-btn");
     const originalHtml = btn.innerHTML;
+
     btn.disabled = true;
     btn.innerHTML = `<span>Searching&hellip;</span>`;
 
-    const body = { ingredients: allSelectedNames() };
-    const mealTime = document.getElementById("filter-meal-time").value;
-    const category = document.getElementById("filter-category").value;
-    if (mealTime) body.meal_time = mealTime;
-    if (category) body.category = category;
+    const body = {
+      ingredients: allSelectedNames()
+    };
+
+    const mealTime =
+      document.getElementById("filter-meal-time").value;
+
+    const category =
+      document.getElementById("filter-category").value;
+
+    if (mealTime) {
+      body.meal_time = mealTime;
+    }
+
+    if (category) {
+      body.category = category;
+    }
 
     try {
-      // POST /api/match-ingredients (classes.js) returns {success, message,
-      // data} like the other classes.js routes, so nvApi()'s generic
-      // {success, data} unwrapping is correct here (unlike auth.js's
-      // endpoints — see login.html/mealtime.html for that gotcha).
-      // It only matches ingredient names it already recognizes in the
-      // ingredients table, and only classes that already have their
-      // ingredient list filled in via class_ingredients — a custom name
-      // typed into the search box won't match anything until someone adds
-      // it via POST /api/add-ingredient.
       const matches = await nvApi("/match-ingredients", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
       });
+
       renderResults(matches);
+
     } catch (err) {
       banner.textContent = err.message;
       banner.classList.remove("d-none");
       renderResults([]);
+
     } finally {
       btn.disabled = false;
       btn.innerHTML = originalHtml;
     }
   });
 
-  renderAll();
+  // Initial page load = Popular 26.
+// Initial page load = ALL ingredients from database.
+loadAllIngredients();
+renderSelectedChips();
+renderContinueButton();
 </script>
 </body>
 </html>
