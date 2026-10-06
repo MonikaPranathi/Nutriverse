@@ -211,9 +211,8 @@
     font-size: 0.8rem;
   }
 </style>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="apiclient.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="ingredient-icons.js"></script>
 
 <script>
@@ -312,18 +311,10 @@
 // ------------------------------------------------------------
 async function loadAllIngredients() {
   try {
-    const response = await fetch(
-      "http://localhost:5000/api/ingredients?limit=500"
-    );
+    const result = await nvApi("/ingredients?limit=500");
 
-    if (!response.ok) {
-      throw new Error("Failed to load ingredients.");
-    }
-
-    const result = await response.json();
-
-    if (result.success && Array.isArray(result.data)) {
-      databaseResults = result.data;
+    if (Array.isArray(result)) {
+      databaseResults = result;
     } else {
       databaseResults = [];
     }
@@ -335,62 +326,55 @@ async function loadAllIngredients() {
 
     const banner = document.getElementById("error-banner");
     banner.textContent =
-      "Couldn't load ingredients. Make sure the backend is running on http://localhost:5000.";
+      "Couldn't load ingredients. Please try again.";
     banner.classList.remove("d-none");
   }
 }
-  async function searchIngredients(query) {
-    const q = query.trim();
 
-    if (!q) {
-      databaseResults = [];
-      renderGrid();
+async function searchIngredients(query) {
+  const q = query.trim();
+
+  if (!q) {
+    databaseResults = [];
+    renderGrid();
+    return;
+  }
+
+  const requestId = ++searchRequestId;
+
+  try {
+    const result = await nvApi(
+      `/ingredients?q=${encodeURIComponent(q)}&limit=50`
+    );
+
+    if (requestId !== searchRequestId) {
       return;
     }
 
-    const requestId = ++searchRequestId;
-
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/ingredients?q=${encodeURIComponent(q)}&limit=50`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to search ingredients.");
-      }
-
-      const result = await response.json();
-
-      // Ignore an older request if a newer search has already happened.
-      if (requestId !== searchRequestId) {
-        return;
-      }
-
-      if (result.success && Array.isArray(result.data)) {
-        databaseResults = result.data;
-      } else {
-        databaseResults = [];
-      }
-
-      renderGrid(databaseResults);
-
-    } catch (err) {
-      console.error("Ingredient search error:", err);
-
-      if (requestId !== searchRequestId) {
-        return;
-      }
-
+    if (Array.isArray(result)) {
+      databaseResults = result;
+    } else {
       databaseResults = [];
-      renderGrid([]);
-
-      const banner = document.getElementById("error-banner");
-      banner.textContent =
-        "Couldn't search ingredients. Make sure the backend is running on http://localhost:5000.";
-      banner.classList.remove("d-none");
     }
-  }
 
+    renderGrid(databaseResults);
+
+  } catch (err) {
+    console.error("Ingredient search error:", err);
+
+    if (requestId !== searchRequestId) {
+      return;
+    }
+
+    databaseResults = [];
+    renderGrid([]);
+
+    const banner = document.getElementById("error-banner");
+    banner.textContent =
+      "Couldn't search ingredients. Please try again.";
+    banner.classList.remove("d-none");
+  }
+}
   // ------------------------------------------------------------
   // Selected ingredient chips
   // ------------------------------------------------------------
