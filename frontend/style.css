@@ -46,7 +46,6 @@ a:hover { color: var(--chili); }
   font-weight: 600;
   font-size: 1.4rem;
 }
-.nv-navbar .navbar-brand::before { content: "🍳 "; }
 .nv-navbar .nav-link { color: var(--ink); }
 .nv-navbar .nav-link.active,
 .nv-navbar .nav-link:hover { color: var(--chili); font-weight: 600; }
@@ -444,4 +443,23 @@ a:hover > .nv-card,
 .nv-thumb-fallback {
   width: 100%;
   height: 100%;
+}
+.nv-navbar .navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar-logo {
+  height: 70px;
+  width: 70px;
+  object-fit: contain;
+  display: block;
+}
+
+.navbar-wordmark {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }

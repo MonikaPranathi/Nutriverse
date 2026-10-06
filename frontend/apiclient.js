@@ -46,7 +46,7 @@
        nvCardArtHtml()) instead of a real photo.
 */
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://nutriverse-backend-iyo3.onrender.com/api";
 
 const NV_ENUMS = {
   category: [
@@ -479,7 +479,10 @@ function nvRenderNavbar(activeKey) {
 
   root.innerHTML = `
     <div class="container">
-      <a class="navbar-brand" href="index.html">Nutriverse</a>
+      <a class="navbar-brand" href="index.html">
+        <img src="assets/nutriverse-favicon.png" alt="Nutriverse" class="navbar-logo">
+        <img src="assets/nutriverse-wordmark.png" alt="Nutriverse" class="navbar-wordmark">
+      </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nvNav">
         <span class="navbar-toggler-icon"></span>
       </button>

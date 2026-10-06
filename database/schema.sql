@@ -14,7 +14,7 @@ CREATE TABLE classes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(200) NOT NULL,
   category ENUM('gut_health','family','quick_no_stove','veg','nonveg_egg','seafood') NOT NULL,
-  budget ENUM('low','medium','high') DEFAULT 'low',
+
   time_needed ENUM('quick','medium','long') DEFAULT 'quick',
   taste ENUM('spicy','sweet','neutral') DEFAULT 'neutral',
   skill_level ENUM('beginner','intermediate','advanced') DEFAULT 'beginner',
