@@ -133,13 +133,13 @@ router.get('/favorites', async (req, res) => {
 
     try {
         const [rows] = await pool.query(
-            `SELECT c.id, c.title, c.category, c.budget, c.time_needed, c.taste,
+            `SELECT c.id, c.title, c.category, c.time_needed, c.taste,
                     c.skill_level, c.meal_time, c.video_url, c.source_type,
-                    f.favorited_at
+                    f.created_at
              FROM user_favorites f
              JOIN classes c ON c.id = f.class_id
              WHERE f.user_id = ?
-             ORDER BY f.favorited_at DESC`,
+             ORDER BY f.created_at DESC`,
             [userId]
         );
         return respond(res, true, 'Favorites retrieved.', rows);

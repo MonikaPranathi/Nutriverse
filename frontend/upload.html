@@ -38,10 +38,7 @@
           <label class="form-label">Meal time</label>
           <select class="form-select" id="f-meal_time"></select>
         </div>
-        <div class="col-md-4">
-          <label class="form-label">Budget</label>
-          <select class="form-select" id="f-budget"></select>
-        </div>
+         
         <div class="col-md-4">
           <label class="form-label">Time needed</label>
           <select class="form-select" id="f-time_needed"></select>
@@ -144,7 +141,7 @@
       el.appendChild(opt);
     });
   }
-  ["category", "meal_time", "budget", "time_needed", "taste", "skill_level", "source_type"].forEach((f) => fillSelect(`f-${f}`, f));
+  ["category", "meal_time", "time_needed", "taste", "skill_level", "source_type"].forEach((f) => fillSelect(`f-${f}`, f));
 
   document.getElementById("f-source_type").addEventListener("change", (e) => {
     const isNative = e.target.value === "native";
@@ -184,7 +181,6 @@
       title: document.getElementById("f-title").value,
       category: document.getElementById("f-category").value,
       meal_time: document.getElementById("f-meal_time").value,
-      budget: document.getElementById("f-budget").value,
       time_needed: document.getElementById("f-time_needed").value,
       taste: document.getElementById("f-taste").value,
       skill_level: document.getElementById("f-skill_level").value,

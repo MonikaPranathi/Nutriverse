@@ -7,7 +7,7 @@
  *   POST /api/admin/review  - approve or reject a pending class
  *
  * Matches Pranathi's actual schema:
- *   classes(id, title, category, budget, time_needed, taste,
+ *   classes(id, title, category time_needed, taste,
  *           skill_level, meal_time, video_url, source_type,
  *           uploader_id, status, created_at)
  *   users(id, name, email, password, role, created_at)
@@ -79,7 +79,7 @@ async function requireAdmin(req, res, next) {
 router.get('/admin/pending', requireAdmin, async (req, res) => {
     try {
         const [rows] = await pool.query(
-            `SELECT c.id, c.title, c.category, c.budget, c.time_needed, c.taste,
+            `SELECT c.id, c.title, c.category, c.time_needed, c.taste,
                     c.skill_level, c.meal_time, c.video_url, c.source_type,
                     c.created_at, u.id AS uploader_id, u.name AS uploader_name
              FROM classes c

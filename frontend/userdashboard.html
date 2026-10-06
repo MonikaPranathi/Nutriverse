@@ -151,18 +151,8 @@
     }
 
     try {
-      // No dedicated "my uploads" endpoint yet — fetch each status and
-      // filter client-side by uploader_id. Inefficient; worth asking for
-      // a real GET /api/my-uploads?user_id= endpoint.
-      const [pending, approved, rejected] = await Promise.all([
-        nvGetPendingClasses(),
-        nvGetClasses({ status: "approved" }),
-        nvGetClasses({ status: "rejected" }),
-      ]);
-      const mine = [...pending, ...approved, ...rejected]
-        .filter(c => String(c.uploader_id) === String(currentUser.id))
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      renderUploads(mine);
+      const uploads = await nvGetMyUploads(currentUser.id);
+      renderUploads(uploads);
     } catch (err) {
       document.getElementById("pane-uploads").innerHTML =
         `<div class="alert alert-warning">Couldn't load uploads: ${err.message}</div>`;

@@ -1,6 +1,17 @@
 /backend/node_modules/
 /frontend/node_modules/
+
 .env
 backend/.env
+
 .DS_Store
+
 backend/uploads/
+# Local database backups
+database/nutriverse_full_backup.sql
+database/recipe_data_old_backup.sql
+recipe_data_current.sql
+
+# Temporary password-fix scripts
+backend/fix-lithisha.js
+backend/fix-monika.js

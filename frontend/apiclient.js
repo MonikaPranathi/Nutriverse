@@ -1,4 +1,4 @@
-/*
+ /*
   API CLIENT — Member 4 pages
   -----------------------------------------------------------------
   Based on the real backend-db branch code (admin.js, auth.js, db.js,
@@ -11,13 +11,13 @@
   - All routes return { success, message, data }.
   - Real filter/enum fields (classes table) — NOT "cuisine"/"mood":
       category:    gut_health | family | quick_no_stove | veg | nonveg_egg | seafood
-      budget:      low | medium | high
+     
       time_needed: quick | medium | long
       taste:       spicy | sweet | neutral
       skill_level: beginner | intermediate | advanced
       meal_time:   morning | afternoon | evening | night
       source_type: native | youtube | external
-  - GET /api/classes returns rows with: id, title, category, budget,
+  - GET /api/classes returns rows with: id, title, category,
     time_needed, taste, skill_level, meal_time, video_url, source_type,
     uploader_id, status, created_at. No thumbnail, instructor, or
     rating fields exist in the schema.
@@ -56,12 +56,10 @@ const NV_ENUMS = {
     { value: "veg", label: "Vegetarian" },
     { value: "nonveg_egg", label: "Non-Veg & Egg" },
     { value: "seafood", label: "Seafood" },
+    { value: "drinks", label: "Drinks" },
+    { value: "desserts", label: "Desserts" },
   ],
-  budget: [
-    { value: "low", label: "Low" },
-    { value: "medium", label: "Medium" },
-    { value: "high", label: "High" },
-  ],
+ 
   time_needed: [
     { value: "quick", label: "Quick" },
     { value: "medium", label: "Medium" },
@@ -155,7 +153,7 @@ async function nvApi(path, options = {}) {
   return data.data;
 }
 
-// GET /api/classes?status=&category=&budget=&time_needed=&taste=&skill_level=&meal_time=
+// GET /api/classes?status=&category=&time_needed=&taste=&skill_level=&meal_time=
 function nvGetClasses(filters = {}) {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
@@ -169,12 +167,7 @@ function nvGetClasses(filters = {}) {
 // list and find the match client-side. Swap this for a real endpoint
 // call the moment one exists.
 async function nvGetClassById(id) {
-  const classes = await nvGetClasses({ status: "approved" });
-  const found = classes.find((c) => String(c.id) === String(id));
-  if (found) return found;
-  // fall back to pending, in case a contributor is previewing their own submission
-  const pending = await nvGetClasses({ status: "pending" });
-  return pending.find((c) => String(c.id) === String(id)) || null;
+  return nvApi(`/classes/${id}`, { method: "GET" });
 }
 
 // GET /api/admin/pending?admin_id=
@@ -200,7 +193,10 @@ function nvReviewClass(classId, decision) {
 function nvGetNotifications(userId) {
   return nvApi(`/notifications?user_id=${userId}`, { method: "GET" });
 }
-
+// GET /api/my-uploads?user_id=
+function nvGetMyUploads(userId) {
+  return nvApi(`/my-uploads?user_id=${userId}`, { method: "GET" });
+}
 // POST /api/like-class  { user_id, class_id }
 function nvLikeClass(userId, classId) {
   return nvApi("/like-class", {
